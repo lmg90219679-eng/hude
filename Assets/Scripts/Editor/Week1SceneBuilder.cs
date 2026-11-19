@@ -508,9 +508,21 @@ namespace Escape.EditorTools
             eye.localPosition = new Vector3(0f, headY, 0.2f);
 
             // 잡히는 연출용: 머리 위치(카메라는 GameFlow가 이 앞에 놓는다) + 붉은 조명
+            // 모델에 머리 뼈가 있으면 거기에 붙여서, 애니메이션 중 머리를 따라가게 한다
             var face = new GameObject("FaceCamPoint").transform;
             face.SetParent(chaser.transform, false);
             face.localPosition = new Vector3(0f, headY, 0.1f);
+            var headBone = FindHeadBone(chaserVisualRoot);
+            if (headBone != null)
+            {
+                face.position = headBone.position + Vector3.up * (ChaserHeight * 0.05f);
+                face.SetParent(headBone, true);
+                Debug.Log($"[Week1SceneBuilder] 머리 뼈 사용: {headBone.name}");
+            }
+            else
+            {
+                Debug.LogWarning("[Week1SceneBuilder] 머리 뼈를 찾지 못해 높이로 대체했다.");
+            }
             var faceLight = new GameObject("FaceLight").AddComponent<Light>();
             faceLight.transform.SetParent(face, false);
             faceLight.transform.localPosition = new Vector3(0f, 0.1f, 0.8f);
@@ -641,6 +653,7 @@ namespace Escape.EditorTools
 
             var model = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             model.name = "Visual";
+            chaserVisualRoot = model.transform;
             model.transform.SetParent(root, false);
             model.transform.localPosition = Vector3.zero;
             model.transform.localRotation = Quaternion.identity;
@@ -670,6 +683,24 @@ namespace Escape.EditorTools
                     Debug.Log($"[Week1SceneBuilder]  재질 {(m != null ? m.name : "null")} / 셰이더 {(m != null ? m.shader.name : "-")}");
 
             return ChaserHeight;
+        }
+
+        static Transform chaserVisualRoot;
+
+        /// <summary>이름에 head가 들어간 뼈 중 머리 본체를 찾는다 (headend, top 같은 끝 뼈는 제외).</summary>
+        static Transform FindHeadBone(Transform root)
+        {
+            if (root == null) return null;
+            Transform best = null;
+            foreach (var t in root.GetComponentsInChildren<Transform>())
+            {
+                string n = t.name.ToLowerInvariant();
+                if (!n.Contains("head")) continue;
+                Debug.Log($"[Week1SceneBuilder]  뼈 후보: {t.name}");
+                if (n.Contains("end") || n.Contains("top") || n.Contains("neck")) continue;
+                if (best == null) best = t;
+            }
+            return best;
         }
 
         static Bounds GetBounds(GameObject go)

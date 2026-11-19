@@ -21,10 +21,11 @@ namespace Escape.Core
         public static GameFlow Instance { get; private set; }
 
         [Header("Catch sequence")]
-        [SerializeField] float faceStartDistance = 1.8f;
-        [SerializeField] float faceEndDistance = 0.55f;
-        [SerializeField] float faceDuration = 1.8f;
-        [SerializeField] float shakeAmount = 0.03f;
+        [SerializeField] float faceStartDistance = 1.3f;   // 컷 직후 얼굴과의 거리
+        [SerializeField] float faceEndDistance = 0.7f;     // 펀치 후 얼굴과의 거리 (화면을 꽉 채운다)
+        [SerializeField] float faceFov = 38f;              // 좁은 화각으로 얼굴을 크게 확대
+        [SerializeField] float faceDuration = 2.2f;
+        [SerializeField] float shakeAmount = 0.05f;
         [SerializeField] float fadeDuration = 0.6f;
         [SerializeField] float blackHold = 1.2f;
 
@@ -37,6 +38,9 @@ namespace Escape.Core
 
         /// <summary>0이면 투명, 1이면 완전 암전. HUD가 그린다.</summary>
         public float FadeAlpha { get; private set; }
+
+        /// <summary>점프 스케어 순간의 섬광. 1에서 0으로 빠르게 사라진다.</summary>
+        public float FlashAlpha { get; private set; }
 
         void Awake()
         {
@@ -99,23 +103,34 @@ namespace Escape.Core
 
             if (cam != null && face != null)
             {
-                // 추적자가 플레이어를 바라보게 하고, 카메라를 얼굴 앞으로 옮긴다
+                // 추적자가 플레이어를 바라보게 한다 (얼굴이 정면으로 오도록)
                 Vector3 look = player.transform.position - chaser.transform.position;
                 look.y = 0f;
                 if (look.sqrMagnitude > 0.01f) chaser.transform.rotation = Quaternion.LookRotation(look);
 
                 cam.transform.SetParent(null, true);
+                float baseFov = cam.fieldOfView;
+
+                // 점프 스케어: 아무 예고 없이 한 프레임에 얼굴 코앞으로 컷. 번쩍이는 섬광 + 화면 꽉 찬 얼굴.
+                FlashAlpha = 1f;
 
                 float t = 0f;
                 while (t < faceDuration)
                 {
                     t += Time.deltaTime;
                     float k = Mathf.Clamp01(t / faceDuration);
-                    float dist = Mathf.Lerp(faceStartDistance, faceEndDistance, k * k);
+
+                    // 처음 0.12초에 확 들이미는 펀치, 그 뒤로는 천천히 더 다가온다
+                    float punch = Mathf.Clamp01(t / 0.12f);
+                    float dist = Mathf.Lerp(faceStartDistance, faceEndDistance, punch * punch) - 0.15f * k;
+                    cam.fieldOfView = Mathf.Lerp(baseFov, faceFov, punch);
+
+                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 5f);
 
                     Vector3 center = face.position;
                     Vector3 dir = chaser.transform.forward;
-                    Vector3 pos = center + dir * dist + Random.insideUnitSphere * shakeAmount * (0.3f + k);
+                    float shake = shakeAmount * (1.5f - k);
+                    Vector3 pos = center + dir * dist + Random.insideUnitSphere * shake;
                     cam.transform.position = pos;
                     cam.transform.rotation = Quaternion.LookRotation((center - pos).normalized);
                     yield return null;
