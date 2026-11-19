@@ -82,6 +82,13 @@ namespace Escape.UI
 
             if (inventoryOpen && flow.State == GameState.Playing) DrawInventory(w, h);
 
+            if (flow.TintAlpha > 0.01f)
+            {
+                GUI.color = new Color(0.8f, 0f, 0f, flow.TintAlpha);
+                GUI.DrawTexture(new Rect(0, 0, w, h), Texture2D.whiteTexture);
+                GUI.color = Color.white;
+            }
+
             if (flow.FlashAlpha > 0.01f)
             {
                 GUI.color = new Color(0.9f, 0.9f, 0.9f, flow.FlashAlpha);

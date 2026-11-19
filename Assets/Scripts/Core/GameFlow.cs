@@ -21,12 +21,13 @@ namespace Escape.Core
         public static GameFlow Instance { get; private set; }
 
         [Header("Catch sequence")]
-        [SerializeField] float faceStartDistance = 1.0f;   // 컷 직후 얼굴과의 거리
-        [SerializeField] float faceEndDistance = 0.4f;     // 펀치 후 얼굴과의 거리 (화면을 꽉 채운다)
-        [SerializeField] float faceFov = 26f;              // 좁은 화각으로 얼굴을 크게 확대
-        [SerializeField] float faceDuration = 2.4f;
-        [SerializeField] float shakeAmount = 0.1f;
-        [SerializeField] float punchTime = 0.07f;          // 들이미는 데 걸리는 시간 (짧을수록 갑작스럽다)
+        [SerializeField] float faceStartDistance = 0.8f;   // 컷 직후 얼굴과의 거리
+        [SerializeField] float faceEndDistance = 0.28f;    // 펀치 후 얼굴과의 거리 (화면을 꽉 채운다)
+        [SerializeField] float faceFov = 20f;              // 좁은 화각으로 얼굴을 크게 확대
+        [SerializeField] float faceDuration = 2.6f;
+        [SerializeField] float shakeAmount = 0.16f;
+        [SerializeField] float punchTime = 0.05f;          // 들이미는 데 걸리는 시간 (짧을수록 갑작스럽다)
+        [SerializeField] float tiltDegrees = 9f;           // 카메라가 기울어지는 각도 (불안정한 시야)
         [SerializeField] float fadeDuration = 0.6f;
         [SerializeField] float blackHold = 1.2f;
 
@@ -42,6 +43,9 @@ namespace Escape.Core
 
         /// <summary>점프 스케어 순간의 섬광. 1에서 0으로 빠르게 사라진다.</summary>
         public float FlashAlpha { get; private set; }
+
+        /// <summary>붉은 색조. 잡힌 동안 맥동한다.</summary>
+        public float TintAlpha { get; private set; }
 
         void Awake()
         {
@@ -127,16 +131,25 @@ namespace Escape.Core
                     cam.fieldOfView = Mathf.Lerp(baseFov, faceFov, punch) - 4f * k;
 
                     // 섬광은 빠르게 사라지고, 중간에 두 번 더 번쩍인다 (스트로브)
-                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 4f);
-                    if ((t > 0.38f && t < 0.43f) || (t > 0.72f && t < 0.76f) || (t > 1.2f && t < 1.23f))
-                        FlashAlpha = 0.75f;
+                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 6f);
+                    // 처음 0.9초는 빠르게 깜빡이는 스트로브, 이후에도 가끔 번쩍인다
+                    if (t < 0.9f && Mathf.FloorToInt(t * 16f) % 2 == 1)
+                        FlashAlpha = Mathf.Max(FlashAlpha, 0.7f * (1f - t));
+                    else if ((t > 1.3f && t < 1.33f) || (t > 1.8f && t < 1.83f))
+                        FlashAlpha = 0.8f;
+
+                    // 붉은 기운이 심장박동처럼 맥동한다
+                    TintAlpha = 0.28f + 0.14f * Mathf.Sin(t * 28f);
 
                     Vector3 center = face.position;
                     Vector3 dir = chaser.transform.forward;
                     float shake = shakeAmount * (1.6f - k) * (punch < 1f ? 0.3f : 1f);
                     Vector3 pos = center + dir * dist + Random.insideUnitSphere * shake;
                     cam.transform.position = pos;
-                    cam.transform.rotation = Quaternion.LookRotation((center - pos).normalized);
+                    var aim = Quaternion.LookRotation((center - pos).normalized);
+                    // 시야를 기울이고 떨어서 방향 감각을 무너뜨린다
+                    float roll = tiltDegrees * (punch >= 1f ? 1f : 0.3f) + Random.Range(-3f, 3f) * (1.4f - k);
+                    cam.transform.rotation = aim * Quaternion.Euler(0f, 0f, roll);
                     yield return null;
                 }
             }
@@ -146,6 +159,7 @@ namespace Escape.Core
             }
 
             // 암전
+            TintAlpha = 0f;
             float f = 0f;
             while (f < fadeDuration)
             {
