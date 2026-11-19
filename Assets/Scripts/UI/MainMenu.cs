@@ -6,7 +6,7 @@ namespace Escape.UI
     /// <summary>메인 메뉴. 시작과 종료 버튼 (임시 OnGUI).</summary>
     public class MainMenu : MonoBehaviour
     {
-        public const string GameSceneName = "Week1_Blockout";
+        public const string GameSceneName = "Tower";
 
         GUIStyle title, button;
 

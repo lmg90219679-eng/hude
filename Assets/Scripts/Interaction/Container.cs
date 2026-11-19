@@ -5,19 +5,23 @@ using UnityEngine;
 namespace Escape.Interaction
 {
     /// <summary>
-    /// 서랍, 책상 위, 옷장 안 같은 "뒤질 수 있는 곳". 열 때 소음이 난다.
-    /// ItemSpawner가 판마다 무작위로 아이템을 채운다.
+    /// 서랍, 책상 위 같은 "뒤질 수 있는 곳". 열 때 소음이 난다.
+    /// TowerSpawner가 판마다 무작위로 아이템과 방 열쇠를 채운다.
     /// </summary>
     public class Container : MonoBehaviour, IInteractable
     {
         [SerializeField] float openNoiseRadius = 8f;
 
-        public bool Searched { get; private set; }
-        public ItemType? Content { get; private set; }
+        /// <summary>어느 층, 어느 방에 있는지 (씬 빌더가 채운다).</summary>
+        public int floor;
+        public int room;
 
-        public void Fill(ItemType? item)
+        public bool Searched { get; private set; }
+        public ItemDrop Content { get; private set; }
+
+        public void Fill(ItemDrop drop)
         {
-            Content = item;
+            Content = drop;
             Searched = false;
         }
 
@@ -30,9 +34,10 @@ namespace Escape.Interaction
 
             NoiseSystem.Emit(transform.position, openNoiseRadius);
 
-            if (Content.HasValue)
+            if (Content != null)
             {
-                who.Inventory.Add(Content.Value);
+                if (Content.Type.HasValue) who.Inventory.Add(Content.Type.Value);
+                else who.Inventory.AddRoomKey(Content.KeyId);
                 Content = null;
             }
             else

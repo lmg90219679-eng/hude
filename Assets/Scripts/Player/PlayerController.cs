@@ -50,6 +50,16 @@ namespace Escape.Player
 
         Vector3 hideExitPosition;
 
+        /// <summary>계단 이동 등으로 즉시 위치와 방향을 옮긴다.</summary>
+        public void Teleport(Vector3 position, float yaw)
+        {
+            bool wasEnabled = controller.enabled;
+            controller.enabled = false;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            controller.enabled = wasEnabled;
+            verticalVelocity = 0f;
+        }
+
         public void EnterHiding(Vector3 hidePosition, Vector3 exitPosition, Quaternion facing)
         {
             hideExitPosition = exitPosition;

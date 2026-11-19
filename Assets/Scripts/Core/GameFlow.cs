@@ -52,7 +52,6 @@ namespace Escape.Core
         {
             Instance = this;
             player = FindFirstObjectByType<PlayerController>();
-            chaser = FindFirstObjectByType<ChaserAI>();
         }
 
         void OnEnable() => ChaserAI.PlayerCaught += OnCaught;
@@ -85,10 +84,15 @@ namespace Escape.Core
             LockPlayer();
         }
 
-        void OnCaught()
+        void OnCaught(ChaserAI who)
         {
             if (State != GameState.Playing) return;
             State = GameState.Caught;
+            chaser = who;
+
+            // 평소에는 꺼 둔 얼굴 조명을 잡힌 순간에만 켠다 (평소에 켜 두면 어둠 속에서 위치가 드러난다)
+            foreach (var l in who.GetComponentsInChildren<Light>(true)) l.enabled = true;
+
             LockPlayer();
             StartCoroutine(CatchSequence());
         }

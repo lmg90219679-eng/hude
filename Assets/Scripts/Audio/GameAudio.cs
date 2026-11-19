@@ -14,17 +14,16 @@ namespace Escape.Audio
         public static GameAudio Instance { get; private set; }
 
         [SerializeField] PlayerController player;
-        [SerializeField] ChaserAI chaser;
         [SerializeField] float heartbeatMaxDistance = 18f;
 
         AudioSource ambient, heart, steps, sfx, sfxLow, sfxHigh;
-        AudioClip footstep, scream, sting;
+        AudioClip footstep, scream, sting, click;
 
         void Awake()
         {
             Instance = this;
             if (player == null) player = FindFirstObjectByType<PlayerController>();
-            if (chaser == null) chaser = FindFirstObjectByType<ChaserAI>();
+            click = ProceduralSounds.Click();
 
             ambient = NewSource("Ambient", ProceduralSounds.AmbientDrone(), loop: true, volume: 0.5f);
             heart = NewSource("Heartbeat", ProceduralSounds.Heartbeat(), loop: true, volume: 0f);
@@ -61,19 +60,41 @@ namespace Escape.Audio
             return s;
         }
 
+        ChaserAI[] chasers = new ChaserAI[0];
+        float nextScan;
+
         void Update()
         {
-            if (player == null || chaser == null) return;
+            if (player == null) return;
 
-            float dist = Vector3.Distance(player.transform.position, chaser.transform.position);
-            float closeness = 1f - Mathf.Clamp01(dist / heartbeatMaxDistance);
+            // 추적자가 여러 명(층마다 1명)이라 가끔 목록을 갱신한다
+            if (Time.time >= nextScan)
+            {
+                chasers = FindObjectsByType<ChaserAI>(FindObjectsSortMode.None);
+                nextScan = Time.time + 1f;
+            }
 
-            // 추적 중이면 최소 일정 크기 이상으로 올린다
-            if (chaser.Current == ChaserAI.State.Chase) closeness = Mathf.Max(closeness, 0.7f);
-            else if (chaser.Current == ChaserAI.State.Search) closeness = Mathf.Max(closeness, 0.25f);
+            // 가장 위협적인 추적자를 기준으로 심장 소리를 정한다
+            float closeness = 0f;
+            foreach (var c in chasers)
+            {
+                if (c == null || !c.isActiveAndEnabled) continue;
+                float dist = Vector3.Distance(player.transform.position, c.transform.position);
+                // 다른 층이면 거리를 크게 보정 (벽과 바닥이 가로막는다)
+                if (c.Floor != Escape.Core.TowerLayout.FloorOf(player.transform.position.y)) dist += 14f;
+                float k = 1f - Mathf.Clamp01(dist / heartbeatMaxDistance);
+                if (c.Current == ChaserAI.State.Chase) k = Mathf.Max(k, 0.7f);
+                else if (c.Current == ChaserAI.State.Search) k = Mathf.Max(k, 0.25f);
+                closeness = Mathf.Max(closeness, k);
+            }
 
             heart.volume = Mathf.Lerp(heart.volume, closeness, 3f * Time.deltaTime);
             heart.pitch = Mathf.Lerp(0.85f, 1.6f, closeness);
+        }
+
+        public void PlayClick()
+        {
+            if (click != null) sfx.PlayOneShot(click, 0.7f);
         }
 
         void OnStep(bool crouching, bool sprinting)

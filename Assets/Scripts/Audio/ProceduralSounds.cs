@@ -72,6 +72,22 @@ namespace Escape.Audio
             return Make("Scream", data);
         }
 
+        /// <summary>손전등 스위치의 짧은 딸깍 소리.</summary>
+        public static AudioClip Click()
+        {
+            float len = 0.06f;
+            var data = new float[(int)(Rate * len)];
+            var rng = new System.Random(5);
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float env = Mathf.Exp(-t * 90f);
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0);
+                data[i] = (noise * 0.5f + Mathf.Sin(2f * Mathf.PI * 1200f * t) * 0.5f) * env * 0.6f;
+            }
+            return Make("Click", data);
+        }
+
         /// <summary>점프 스케어 순간의 충격음. 낮은 쿵 + 거친 노이즈를 한꺼번에 터뜨린다.</summary>
         public static AudioClip Sting()
         {

@@ -10,8 +10,8 @@ namespace Escape.Core
     public static class NoiseSystem
     {
         // 맵은 24m x 24m(방 8m). 걸으면 옆방 가까이, 달리면 한 칸 반, 웅크리면 거의 안 들린다.
-        public const float WalkRadius = 5f;
-        public const float SprintRadius = 12f;
+        public const float WalkRadius = 5.5f;
+        public const float SprintRadius = 13f;
         public const float CrouchRadius = 1.5f;
         public const float DoorRadius = 9f;
 

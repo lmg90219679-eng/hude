@@ -5,22 +5,21 @@ using UnityEngine;
 namespace Escape.Interaction
 {
     /// <summary>
-    /// 탈출 문. 위치는 고정이고, 열쇠 3개를 모으기 전에는 잠겨 있다.
-    /// 열쇠 3개를 가지고 열면 클리어.
+    /// 1층 정문. 층마다 하나씩 있는 탈출 열쇠 조각 5개를 합쳐 만든 탈출 열쇠가 있어야 열린다.
     /// </summary>
     public class ExitDoor : MonoBehaviour, IInteractable
     {
         public string GetPrompt(Interactor who)
         {
-            if (who.Inventory.HasAllKeys) return "E: 탈출한다";
-            return $"잠겨 있다 (열쇠 {who.Inventory.KeyCount}/{Inventory.KeysRequired})";
+            if (who.Inventory.HasMasterKey) return "E: 탈출한다";
+            return $"정문이 잠겨 있다 (탈출 열쇠 조각 {who.Inventory.PieceCount}/{Inventory.PiecesRequired})";
         }
 
         public void Interact(Interactor who)
         {
-            if (!who.Inventory.HasAllKeys)
+            if (!who.Inventory.HasMasterKey)
             {
-                who.Inventory.Say("열쇠 3개가 필요하다");
+                who.Inventory.Say("탈출 열쇠가 필요하다. 조각 5개를 합쳐야 한다");
                 return;
             }
             GameFlow.Instance?.Clear();
