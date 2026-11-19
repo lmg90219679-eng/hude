@@ -17,8 +17,8 @@ namespace Escape.Audio
         [SerializeField] ChaserAI chaser;
         [SerializeField] float heartbeatMaxDistance = 18f;
 
-        AudioSource ambient, heart, steps, sfx;
-        AudioClip footstep, scream;
+        AudioSource ambient, heart, steps, sfx, sfxLow;
+        AudioClip footstep, scream, sting;
 
         void Awake()
         {
@@ -30,8 +30,10 @@ namespace Escape.Audio
             heart = NewSource("Heartbeat", ProceduralSounds.Heartbeat(), loop: true, volume: 0f);
             steps = NewSource("Steps", null, loop: false, volume: 0.6f);
             sfx = NewSource("Sfx", null, loop: false, volume: 1f);
+            sfxLow = NewSource("SfxLow", null, loop: false, volume: 1f);
             footstep = ProceduralSounds.Footstep();
             scream = ProceduralSounds.Scream();
+            sting = ProceduralSounds.Sting();
 
             ambient.Play();
             heart.Play();
@@ -84,7 +86,12 @@ namespace Escape.Audio
         {
             ambient.Stop();
             heart.volume = 0f;
+            AudioListener.volume = 1f;
+            sfx.PlayOneShot(sting, 1f);
             sfx.PlayOneShot(scream, 1f);
+            // 낮은 피치의 비명을 겹쳐서 더 섬뜩하고 묵직하게
+            sfxLow.pitch = 0.6f;
+            sfxLow.PlayOneShot(scream, 1f);
         }
     }
 }

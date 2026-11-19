@@ -72,6 +72,24 @@ namespace Escape.Audio
             return Make("Scream", data);
         }
 
+        /// <summary>점프 스케어 순간의 충격음. 낮은 쿵 + 거친 노이즈를 한꺼번에 터뜨린다.</summary>
+        public static AudioClip Sting()
+        {
+            float len = 0.9f;
+            var data = new float[(int)(Rate * len)];
+            var rng = new System.Random(99);
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float env = Mathf.Exp(-t * 6f);
+                float boom = Mathf.Sin(2f * Mathf.PI * (70f - 30f * t) * t) * 1.2f;
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.9f * Mathf.Exp(-t * 14f);
+                float screech = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 1800f * t)) * 0.3f * Mathf.Exp(-t * 9f);
+                data[i] = Mathf.Clamp((boom + noise + screech) * env * 1.4f, -1f, 1f);
+            }
+            return Make("Sting", data);
+        }
+
         static void AddThump(float[] data, float startSec, float lenSec, float freq)
         {
             int start = (int)(startSec * Rate);

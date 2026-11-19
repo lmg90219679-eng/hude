@@ -527,8 +527,8 @@ namespace Escape.EditorTools
             faceLight.transform.SetParent(face, false);
             faceLight.transform.localPosition = new Vector3(0f, 0.1f, 0.8f);
             faceLight.type = LightType.Point;
-            faceLight.range = 4f;
-            faceLight.intensity = 2.5f;
+            faceLight.range = 5f;
+            faceLight.intensity = 6f;
             faceLight.color = new Color(1f, 0.25f, 0.2f);
 
             var ai = chaser.AddComponent<ChaserAI>();

@@ -21,11 +21,12 @@ namespace Escape.Core
         public static GameFlow Instance { get; private set; }
 
         [Header("Catch sequence")]
-        [SerializeField] float faceStartDistance = 1.3f;   // 컷 직후 얼굴과의 거리
-        [SerializeField] float faceEndDistance = 0.7f;     // 펀치 후 얼굴과의 거리 (화면을 꽉 채운다)
-        [SerializeField] float faceFov = 38f;              // 좁은 화각으로 얼굴을 크게 확대
-        [SerializeField] float faceDuration = 2.2f;
-        [SerializeField] float shakeAmount = 0.05f;
+        [SerializeField] float faceStartDistance = 1.0f;   // 컷 직후 얼굴과의 거리
+        [SerializeField] float faceEndDistance = 0.4f;     // 펀치 후 얼굴과의 거리 (화면을 꽉 채운다)
+        [SerializeField] float faceFov = 26f;              // 좁은 화각으로 얼굴을 크게 확대
+        [SerializeField] float faceDuration = 2.4f;
+        [SerializeField] float shakeAmount = 0.1f;
+        [SerializeField] float punchTime = 0.07f;          // 들이미는 데 걸리는 시간 (짧을수록 갑작스럽다)
         [SerializeField] float fadeDuration = 0.6f;
         [SerializeField] float blackHold = 1.2f;
 
@@ -121,15 +122,18 @@ namespace Escape.Core
                     float k = Mathf.Clamp01(t / faceDuration);
 
                     // 처음 0.12초에 확 들이미는 펀치, 그 뒤로는 천천히 더 다가온다
-                    float punch = Mathf.Clamp01(t / 0.12f);
-                    float dist = Mathf.Lerp(faceStartDistance, faceEndDistance, punch * punch) - 0.15f * k;
-                    cam.fieldOfView = Mathf.Lerp(baseFov, faceFov, punch);
+                    float punch = Mathf.Clamp01(t / punchTime);
+                    float dist = Mathf.Lerp(faceStartDistance, faceEndDistance, punch * punch) - 0.12f * k;
+                    cam.fieldOfView = Mathf.Lerp(baseFov, faceFov, punch) - 4f * k;
 
-                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 5f);
+                    // 섬광은 빠르게 사라지고, 중간에 두 번 더 번쩍인다 (스트로브)
+                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 4f);
+                    if ((t > 0.38f && t < 0.43f) || (t > 0.72f && t < 0.76f) || (t > 1.2f && t < 1.23f))
+                        FlashAlpha = 0.75f;
 
                     Vector3 center = face.position;
                     Vector3 dir = chaser.transform.forward;
-                    float shake = shakeAmount * (1.5f - k);
+                    float shake = shakeAmount * (1.6f - k) * (punch < 1f ? 0.3f : 1f);
                     Vector3 pos = center + dir * dist + Random.insideUnitSphere * shake;
                     cam.transform.position = pos;
                     cam.transform.rotation = Quaternion.LookRotation((center - pos).normalized);
