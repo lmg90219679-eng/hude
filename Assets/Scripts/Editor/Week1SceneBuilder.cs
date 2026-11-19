@@ -520,6 +520,7 @@ namespace Escape.EditorTools
             faceLight.color = new Color(1f, 0.25f, 0.2f);
 
             var ai = chaser.AddComponent<ChaserAI>();
+            chaser.AddComponent<ChaserAnimator>();
             var so = new SerializedObject(ai);
             so.FindProperty("eye").objectReferenceValue = eye;
             so.FindProperty("faceCamPoint").objectReferenceValue = face;
@@ -531,21 +532,87 @@ namespace Escape.EditorTools
         /// <summary>Varco에서 가져온 FBX의 임포트 설정: URP 재질로 변환, 텍스처 추출.</summary>
         static void SetupChaserImport()
         {
-            var imp = AssetImporter.GetAtPath(ChaserModelPath) as ModelImporter;
+            ImportChaserFbx(ChaserModelPath, "Textures", loopClips: false);
+            ImportChaserFbx(ChaserWalkPath, "Textures_Walk", loopClips: true);
+            ImportChaserFbx(ChaserRunPath, "Textures_Run", loopClips: true);
+        }
+
+        static void ImportChaserFbx(string path, string texFolder, bool loopClips)
+        {
+            var imp = AssetImporter.GetAtPath(path) as ModelImporter;
             if (imp == null) return;
 
             imp.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             imp.animationType = ModelImporterAnimationType.Generic;
             imp.importCameras = false;
             imp.importLights = false;
+
+            if (loopClips)
+            {
+                var clips = imp.defaultClipAnimations;
+                foreach (var c in clips) { c.loopTime = true; c.loop = true; }
+                imp.clipAnimations = clips;
+            }
             imp.SaveAndReimport();
 
-            const string texDir = "Assets/Models/Chaser/Textures";
+            string texDir = "Assets/Models/Chaser/" + texFolder;
             System.IO.Directory.CreateDirectory(texDir);
             imp.ExtractTextures(texDir);
             AssetDatabase.Refresh();
             imp.SaveAndReimport();
         }
+
+        /// <summary>걷기/달리기 클립으로 Animator 컨트롤러를 만든다. 파라미터 Run(bool)로 전환.</summary>
+        static RuntimeAnimatorController BuildChaserController()
+        {
+            var walk = FindClip(ChaserWalkPath);
+            var run = FindClip(ChaserRunPath);
+            if (walk == null || run == null)
+            {
+                Debug.LogWarning("[Week1SceneBuilder] 걷기/달리기 클립을 찾지 못했다.");
+                return null;
+            }
+
+            const string path = "Assets/Models/Chaser/ChaserController.controller";
+            AssetDatabase.DeleteAsset(path);
+            var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(path);
+            ctrl.AddParameter("Run", AnimatorControllerParameterType.Bool);
+
+            var sm = ctrl.layers[0].stateMachine;
+            var walkState = sm.AddState("Walk");
+            walkState.motion = walk;
+            var runState = sm.AddState("Run");
+            runState.motion = run;
+            sm.defaultState = walkState;
+
+            var toRun = walkState.AddTransition(runState);
+            toRun.hasExitTime = false;
+            toRun.duration = 0.15f;
+            toRun.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "Run");
+
+            var toWalk = runState.AddTransition(walkState);
+            toWalk.hasExitTime = false;
+            toWalk.duration = 0.25f;
+            toWalk.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0, "Run");
+
+            EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Week1SceneBuilder] 추적자 애니메이터 생성: 걷기 {walk.name} ({walk.length:F2}s), 달리기 {run.name} ({run.length:F2}s)");
+            return ctrl;
+        }
+
+        static AnimationClip FindClip(string fbxPath)
+        {
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(fbxPath))
+            {
+                if (o is AnimationClip clip && !clip.name.StartsWith("__preview__"))
+                    return clip;
+            }
+            return null;
+        }
+
+        const string ChaserWalkPath = "Assets/Models/Chaser/Chaser_Walk.fbx";
+        const string ChaserRunPath = "Assets/Models/Chaser/Chaser_Run.fbx";
 
         const string ChaserModelPath = "Assets/Models/Chaser/Chaser.fbx";
         const float ChaserHeight = 2.4f;
@@ -556,7 +623,10 @@ namespace Escape.EditorTools
         /// </summary>
         static float AttachChaserVisual(Transform root)
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ChaserModelPath);
+            // 걷기 FBX(모델 + 애니메이션)를 우선 사용하고, 없으면 T포즈 모델로 대체한다
+            bool animated = AssetDatabase.LoadAssetAtPath<GameObject>(ChaserWalkPath) != null
+                         && AssetDatabase.LoadAssetAtPath<GameObject>(ChaserRunPath) != null;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(animated ? ChaserWalkPath : ChaserModelPath);
             if (prefab == null)
             {
                 var cap = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -576,6 +646,15 @@ namespace Escape.EditorTools
             model.transform.localRotation = Quaternion.identity;
 
             foreach (var c in model.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+
+            if (animated)
+            {
+                var animator = model.GetComponent<Animator>();
+                if (animator == null) animator = model.AddComponent<Animator>();
+                animator.runtimeAnimatorController = BuildChaserController();
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            }
 
             var b = GetBounds(model);
             float scale = b.size.y > 0.001f ? ChaserHeight / b.size.y : 1f;
