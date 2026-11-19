@@ -11,7 +11,7 @@ namespace Escape.Items
     public class ItemSpawner : MonoBehaviour
     {
         [SerializeField] Container[] containers;
-        [SerializeField] int extraBatteries = 2;
+        [SerializeField] int extraBatteries = 3;
 
         public void SetContainers(Container[] list) => containers = list;
 

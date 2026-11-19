@@ -17,7 +17,7 @@ namespace Escape.Items
         public const int KeysRequired = 3;
 
         [SerializeField] Flashlight flashlight;
-        [SerializeField] float batteryRechargeSeconds = 60f;
+        [SerializeField] float batteryRechargeSeconds = 90f;
 
         readonly Dictionary<ItemType, int> items = new Dictionary<ItemType, int>();
 

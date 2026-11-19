@@ -9,7 +9,7 @@ namespace Escape.Player
     [RequireComponent(typeof(Light))]
     public class Flashlight : MonoBehaviour
     {
-        [SerializeField] float maxBattery = 120f;      // 켜 둔 상태로 버틸 수 있는 시간(초)
+        [SerializeField] float maxBattery = 180f;      // 켜 둔 상태로 버틸 수 있는 시간(초)
         [SerializeField] float flickerBelow = 0.2f;    // 배터리 비율이 이 아래면 깜빡임
         [SerializeField] float intensity = 3f;
 

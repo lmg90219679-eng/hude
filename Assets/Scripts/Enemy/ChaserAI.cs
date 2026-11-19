@@ -25,23 +25,24 @@ namespace Escape.Enemy
 
         [Header("Patrol")]
         [SerializeField] Transform[] waypoints;
-        [SerializeField] float patrolSpeed = 2f;
+        [SerializeField] float patrolSpeed = 2.2f;
         [SerializeField] float waypointWait = 1.5f;
 
         [Header("Sight")]
-        [SerializeField] float sightRange = 15f;
+        [SerializeField] float sightRange = 12f;
         [SerializeField] float sightAngle = 100f;     // 전체 시야각
         [SerializeField] LayerMask sightBlockers = ~0;
 
         [Header("Chase")]
-        [SerializeField] float chaseSpeed = 4.2f;
-        [SerializeField] float loseSightTime = 2.5f;  // 이 시간 동안 못 보면 수색으로
-        [SerializeField] float catchDistance = 1.2f;
+        // 달리기(5.5)보다 살짝 느리게: 직선에서는 간신히 따돌리지만 문, 모서리, 막다른 길에서 따라잡힌다.
+        [SerializeField] float chaseSpeed = 5.0f;
+        [SerializeField] float loseSightTime = 3.0f;  // 이 시간 동안 못 보면 수색으로
+        [SerializeField] float catchDistance = 1.3f;
 
         [Header("Search")]
-        [SerializeField] float investigateSpeed = 3f;
-        [SerializeField] float searchDuration = 8f;
-        [SerializeField] float searchRadius = 6f;
+        [SerializeField] float investigateSpeed = 3.2f;
+        [SerializeField] float searchDuration = 12f;
+        [SerializeField] float searchRadius = 7f;
 
         NavMeshAgent agent;
         Escape.Player.PlayerController playerController;
