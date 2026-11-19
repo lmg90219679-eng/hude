@@ -117,7 +117,7 @@ namespace Escape.Core
                 float baseFov = cam.fieldOfView;
 
                 // 점프 스케어: 아무 예고 없이 한 프레임에 얼굴 코앞으로 컷. 번쩍이는 섬광 + 화면 꽉 찬 얼굴.
-                FlashAlpha = 1f;
+                FlashAlpha = 0.35f;
 
                 float t = 0f;
                 while (t < faceDuration)
@@ -131,15 +131,13 @@ namespace Escape.Core
                     cam.fieldOfView = Mathf.Lerp(baseFov, faceFov, punch) - 4f * k;
 
                     // 섬광은 빠르게 사라지고, 중간에 두 번 더 번쩍인다 (스트로브)
-                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 6f);
-                    // 처음 0.9초는 빠르게 깜빡이는 스트로브, 이후에도 가끔 번쩍인다
-                    if (t < 0.9f && Mathf.FloorToInt(t * 16f) % 2 == 1)
-                        FlashAlpha = Mathf.Max(FlashAlpha, 0.7f * (1f - t));
-                    else if ((t > 1.3f && t < 1.33f) || (t > 1.8f && t < 1.83f))
-                        FlashAlpha = 0.8f;
+                    // 눈이 아프지 않도록 섬광은 약하고 느리게: 컷 순간에 한 번, 이후 두 번만 은은하게
+                    FlashAlpha = Mathf.MoveTowards(FlashAlpha, 0f, Time.deltaTime * 2.5f);
+                    if ((t > 0.5f && t < 0.56f) || (t > 1.1f && t < 1.16f))
+                        FlashAlpha = Mathf.Max(FlashAlpha, 0.18f);
 
-                    // 붉은 기운이 심장박동처럼 맥동한다
-                    TintAlpha = 0.28f + 0.14f * Mathf.Sin(t * 28f);
+                    // 붉은 기운은 느리고 약하게 맥동한다
+                    TintAlpha = 0.14f + 0.06f * Mathf.Sin(t * 6f);
 
                     Vector3 center = face.position;
                     Vector3 dir = chaser.transform.forward;
