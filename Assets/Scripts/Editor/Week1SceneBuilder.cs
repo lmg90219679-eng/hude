@@ -523,16 +523,38 @@ namespace Escape.EditorTools
             {
                 Debug.LogWarning("[Week1SceneBuilder] 머리 뼈를 찾지 못해 높이로 대체했다.");
             }
-            var faceLight = new GameObject("FaceLight").AddComponent<Light>();
-            faceLight.transform.SetParent(face, false);
-            faceLight.transform.localPosition = new Vector3(0f, 0.1f, 0.8f);
-            faceLight.type = LightType.Point;
-            faceLight.range = 5f;
-            faceLight.intensity = 6f;
-            faceLight.color = new Color(1f, 0.25f, 0.2f);
+            // 얼굴 조명. 머리 뼈는 축 방향이 제멋대로라서, 조명은 몸통(루트) 기준으로 둔다.
+            // 키: 차갑고 약한 흰빛을 위 앞쪽에서 비춰 얼굴 굴곡과 이빨을 드러낸다.
+            var key = new GameObject("FaceKeyLight").AddComponent<Light>();
+            key.transform.SetParent(chaser.transform, false);
+            key.transform.localPosition = new Vector3(0.35f, headY + 0.45f, 1.2f);
+            key.type = LightType.Point;
+            key.range = 4f;
+            key.intensity = 2.2f;
+            key.color = new Color(0.85f, 0.92f, 1f);
+
+            // 림: 뒤쪽 붉은 빛으로 윤곽을 살려 섬뜩하게 만든다.
+            var rim = new GameObject("FaceRimLight").AddComponent<Light>();
+            rim.transform.SetParent(chaser.transform, false);
+            rim.transform.localPosition = new Vector3(-0.2f, headY + 0.25f, -0.8f);
+            rim.type = LightType.Point;
+            rim.range = 3.5f;
+            rim.intensity = 3.5f;
+            rim.color = new Color(1f, 0.15f, 0.1f);
+
+            // 아래쪽 약한 채움빛: 턱과 입 안쪽을 보이게 한다.
+            var fill = new GameObject("FaceFillLight").AddComponent<Light>();
+            fill.transform.SetParent(chaser.transform, false);
+            fill.transform.localPosition = new Vector3(0f, headY - 0.6f, 0.9f);
+            fill.type = LightType.Point;
+            fill.range = 3f;
+            fill.intensity = 0.8f;
+            fill.color = new Color(0.7f, 0.55f, 0.5f);
 
             var ai = chaser.AddComponent<ChaserAI>();
-            chaser.AddComponent<ChaserAnimator>();
+            var chaserAnim = chaser.AddComponent<ChaserAnimator>();
+            chaserAnim.SetYawOffsets(walkYawFix, runYawFix);
+            EditorUtility.SetDirty(chaserAnim);
             var so = new SerializedObject(ai);
             so.FindProperty("eye").objectReferenceValue = eye;
             so.FindProperty("faceCamPoint").objectReferenceValue = face;
@@ -544,9 +566,48 @@ namespace Escape.EditorTools
         /// <summary>Varco에서 가져온 FBX의 임포트 설정: URP 재질로 변환, 텍스처 추출.</summary>
         static void SetupChaserImport()
         {
-            ImportChaserFbx(ChaserModelPath, "Textures", loopClips: false);
+            // 텍스처는 걷기 FBX에서만 꺼낸다 (세 FBX가 같은 텍스처라 중복 저장을 막는다)
+            ImportChaserFbx(ChaserModelPath, null, loopClips: false);
             ImportChaserFbx(ChaserWalkPath, "Textures_Walk", loopClips: true);
-            ImportChaserFbx(ChaserRunPath, "Textures_Run", loopClips: true);
+            ImportChaserFbx(ChaserRunPath, null, loopClips: true);
+        }
+
+        /// <summary>
+        /// 추적자 전용 재질. Varco가 주는 orm 텍스처(R=차폐, G=거칠기, B=금속)는 URP Lit이 그대로 못 읽어서
+        /// 반짝이거나 색이 틀어지므로 쓰지 않고, 기본색 + 노말맵만 쓰고 거칠게(무광) 만든다.
+        /// </summary>
+        static Material BuildChaserSkin()
+        {
+            const string dir = "Assets/Models/Chaser/Textures_Walk";
+            var baseTex = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/base_color.png");
+            const string normalPath = dir + "/normal.png";
+
+            var ti = AssetImporter.GetAtPath(normalPath) as TextureImporter;
+            if (ti != null && ti.textureType != TextureImporterType.NormalMap)
+            {
+                ti.textureType = TextureImporterType.NormalMap;
+                ti.SaveAndReimport();
+            }
+            var normalTex = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
+
+            const string matPath = "Assets/Materials/ChaserSkin.mat";
+            System.IO.Directory.CreateDirectory(MatDir);
+            AssetDatabase.DeleteAsset(matPath);
+
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            if (baseTex != null) mat.SetTexture("_BaseMap", baseTex);
+            mat.SetColor("_BaseColor", new Color(0.62f, 0.6f, 0.62f));   // 과하게 밝고 붉은 색을 눌러준다
+            mat.SetFloat("_Metallic", 0f);
+            mat.SetFloat("_Smoothness", 0.16f);                           // 거의 무광 (젖은 느낌만 약간)
+            if (normalTex != null)
+            {
+                mat.SetTexture("_BumpMap", normalTex);
+                mat.SetFloat("_BumpScale", 1.1f);
+                mat.EnableKeyword("_NORMALMAP");
+            }
+            AssetDatabase.CreateAsset(mat, matPath);
+            Debug.Log($"[Week1SceneBuilder] 추적자 재질 생성: 기본색 {(baseTex != null)}, 노말 {(normalTex != null)}");
+            return mat;
         }
 
         static void ImportChaserFbx(string path, string texFolder, bool loopClips)
@@ -566,6 +627,8 @@ namespace Escape.EditorTools
                 imp.clipAnimations = clips;
             }
             imp.SaveAndReimport();
+
+            if (texFolder == null) return;
 
             string texDir = "Assets/Models/Chaser/" + texFolder;
             System.IO.Directory.CreateDirectory(texDir);
@@ -660,8 +723,21 @@ namespace Escape.EditorTools
 
             foreach (var c in model.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
 
+            // 전용 재질로 교체 (반짝임과 색 쏠림을 잡는다)
+            var skin = BuildChaserSkin();
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+            {
+                var mats = new Material[r.sharedMaterials.Length];
+                for (int i = 0; i < mats.Length; i++) mats[i] = skin;
+                r.sharedMaterials = mats;
+            }
+
             if (animated)
             {
+                walkYawFix = MeasureYawFix(prefab, FindClip(ChaserWalkPath));
+                runYawFix = MeasureYawFix(prefab, FindClip(ChaserRunPath));
+                Debug.Log($"[Week1SceneBuilder] 방향 보정: 걷기 {walkYawFix:F1}도, 달리기 {runYawFix:F1}도");
+
                 var animator = model.GetComponent<Animator>();
                 if (animator == null) animator = model.AddComponent<Animator>();
                 animator.runtimeAnimatorController = BuildChaserController();
@@ -686,6 +762,52 @@ namespace Escape.EditorTools
         }
 
         static Transform chaserVisualRoot;
+        static float walkYawFix, runYawFix;
+
+        /// <summary>
+        /// 클립을 샘플링해서 몸이 향하는 방향을 잰다 (양쪽 다리 위치로 계산).
+        /// 반환값은 이 클립을 +Z 방향으로 맞추기 위해 모델에 더할 Y 회전 각도(도).
+        /// 임시 인스턴스에서 재고 지우므로 씬의 모델 자세는 바뀌지 않는다.
+        /// </summary>
+        static float MeasureYawFix(GameObject prefab, AnimationClip clip)
+        {
+            if (prefab == null || clip == null) return 0f;
+
+            var tmp = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            tmp.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            tmp.transform.localScale = Vector3.one;
+
+            Transform left = null, right = null;
+            foreach (var t in tmp.GetComponentsInChildren<Transform>())
+            {
+                if (t.name == "LeftUpLeg") left = t;
+                else if (t.name == "RightUpLeg") right = t;
+            }
+
+            float fixDeg = 0f;
+            if (left != null && right != null)
+            {
+                Vector3 sum = Vector3.zero;
+                const int samples = 8;
+                for (int i = 0; i < samples; i++)
+                {
+                    clip.SampleAnimation(tmp, clip.length * i / samples);
+                    Vector3 r = right.position - left.position;
+                    r.y = 0f;
+                    if (r.sqrMagnitude < 1e-6f) continue;
+                    sum += Vector3.Cross(r.normalized, Vector3.up);
+                }
+                if (sum.sqrMagnitude > 1e-6f)
+                    fixDeg = -Mathf.Atan2(sum.x, sum.z) * Mathf.Rad2Deg;
+            }
+            else
+            {
+                Debug.LogWarning("[Week1SceneBuilder] 다리 뼈를 찾지 못해 방향 보정을 건너뛴다.");
+            }
+
+            Object.DestroyImmediate(tmp);
+            return fixDeg;
+        }
 
         /// <summary>이름에 head가 들어간 뼈 중 머리 본체를 찾는다 (headend, top 같은 끝 뼈는 제외).</summary>
         static Transform FindHeadBone(Transform root)

@@ -21,9 +21,10 @@ namespace Escape.Core
         public static GameFlow Instance { get; private set; }
 
         [Header("Catch sequence")]
-        [SerializeField] float faceStartDistance = 0.8f;   // 컷 직후 얼굴과의 거리
-        [SerializeField] float faceEndDistance = 0.28f;    // 펀치 후 얼굴과의 거리 (화면을 꽉 채운다)
-        [SerializeField] float faceFov = 20f;              // 좁은 화각으로 얼굴을 크게 확대
+        [SerializeField] float faceStartDistance = 1.5f;   // 컷 직후 얼굴과의 거리
+        [SerializeField] float faceEndDistance = 0.62f;    // 펀치 후 얼굴과의 거리 (얼굴 전체가 화면을 꽉 채운다)
+        [SerializeField] float faceFov = 30f;              // 좁은 화각으로 얼굴을 크게 확대
+        [SerializeField] float aimDown = 0.06f;            // 눈이 아니라 입과 이빨까지 담도록 조준점을 내린다
         [SerializeField] float faceDuration = 2.6f;
         [SerializeField] float shakeAmount = 0.16f;
         [SerializeField] float punchTime = 0.05f;          // 들이미는 데 걸리는 시간 (짧을수록 갑작스럽다)
@@ -113,6 +114,10 @@ namespace Escape.Core
                 look.y = 0f;
                 if (look.sqrMagnitude > 0.01f) chaser.transform.rotation = Quaternion.LookRotation(look);
 
+                // 달리던 자세 대신 기본 자세로 돌려서 얼굴 앞면이 정확히 카메라를 향하게 한다
+                var chaserAnim = chaser.GetComponent<ChaserAnimator>();
+                if (chaserAnim != null) chaserAnim.ShowFacePose();
+
                 cam.transform.SetParent(null, true);
                 float baseFov = cam.fieldOfView;
 
@@ -139,7 +144,7 @@ namespace Escape.Core
                     // 붉은 기운은 느리고 약하게 맥동한다
                     TintAlpha = 0.14f + 0.06f * Mathf.Sin(t * 6f);
 
-                    Vector3 center = face.position;
+                    Vector3 center = face.position + Vector3.down * aimDown;
                     Vector3 dir = chaser.transform.forward;
                     float shake = shakeAmount * (1.6f - k) * (punch < 1f ? 0.3f : 1f);
                     Vector3 pos = center + dir * dist + Random.insideUnitSphere * shake;
