@@ -1,25 +1,25 @@
 {
-  "files.exclude": {
-    "**/.DS_Store": true,
-    "**/.git": true,
-    "**/*.meta": true,
-    "Library/": true,
-    "Temp/": true,
-    "Logs/": true,
-    "obj/": true,
-    "UserSettings/": true
-  },
-  "search.exclude": {
-    "Library/": true,
-    "Temp/": true,
-    "Logs/": true
-  },
-  "files.watcherExclude": {
-    "**/Library/**": true,
-    "**/Temp/**": true,
-    "**/Logs/**": true
-  },
-  "files.eol": "\n",
-  "editor.formatOnSave": false,
-  "dotnet.defaultSolution": "disable"
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/.git": true,
+        "**/*.meta": true,
+        "Library/": true,
+        "Temp/": true,
+        "Logs/": true,
+        "obj/": true,
+        "UserSettings/": true
+    },
+    "search.exclude": {
+        "Library/": true,
+        "Temp/": true,
+        "Logs/": true
+    },
+    "files.watcherExclude": {
+        "**/Library/**": true,
+        "**/Temp/**": true,
+        "**/Logs/**": true
+    },
+    "files.eol": "\n",
+    "editor.formatOnSave": false,
+    "dotnet.defaultSolution": "Escape.slnx"
 }
