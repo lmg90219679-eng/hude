@@ -41,6 +41,7 @@ namespace Escape.Enemy
         [SerializeField] float searchRadius = 6f;
 
         NavMeshAgent agent;
+        Escape.Player.PlayerController playerController;
         int waypointIndex;
         float waitTimer;
         float lostTimer;
@@ -54,6 +55,7 @@ namespace Escape.Enemy
         {
             agent = GetComponent<NavMeshAgent>();
             if (eye == null) eye = transform;
+            if (player != null) playerController = player.GetComponent<Escape.Player.PlayerController>();
         }
 
         void OnEnable() => NoiseSystem.OnNoise += OnNoiseHeard;
@@ -97,6 +99,8 @@ namespace Escape.Enemy
 
         bool CanSeePlayer()
         {
+            if (playerController != null && playerController.IsHidden) return false;
+
             Vector3 target = player.position + Vector3.up * 1.0f;
             Vector3 to = target - eye.position;
             float dist = to.magnitude;
@@ -182,7 +186,8 @@ namespace Escape.Enemy
 
             agent.SetDestination(SnapToNavMesh(lastKnownPosition));
 
-            if (Vector3.Distance(transform.position, player.position) <= catchDistance)
+            bool hidden = playerController != null && playerController.IsHidden;
+            if (!hidden && Vector3.Distance(transform.position, player.position) <= catchDistance)
             {
                 agent.isStopped = true;
                 PlayerCaught?.Invoke();

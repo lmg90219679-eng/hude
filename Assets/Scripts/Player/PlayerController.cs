@@ -41,6 +41,29 @@ namespace Escape.Player
         public bool IsSprinting { get; private set; }
         public bool IsMoving { get; private set; }
 
+        /// <summary>인벤토리, 클리어, 게임오버 등으로 조작을 막는다.</summary>
+        public bool InputLocked { get; set; }
+        public bool IsHidden { get; private set; }
+
+        Vector3 hideExitPosition;
+
+        public void EnterHiding(Vector3 hidePosition, Vector3 exitPosition, Quaternion facing)
+        {
+            hideExitPosition = exitPosition;
+            IsHidden = true;
+            IsMoving = false;
+            IsSprinting = false;
+            controller.enabled = false;
+            transform.SetPositionAndRotation(hidePosition, facing);
+        }
+
+        public void ExitHiding()
+        {
+            transform.position = hideExitPosition;
+            controller.enabled = true;
+            IsHidden = false;
+        }
+
         void Awake()
         {
             controller = GetComponent<CharacterController>();
@@ -59,8 +82,10 @@ namespace Escape.Player
             var kb = Keyboard.current;
             var mouse = Mouse.current;
             if (kb == null || mouse == null) return;
+            if (InputLocked) return;
 
             Look(mouse);
+            if (IsHidden) return;
             UpdateCrouch(kb);
             Move(kb);
         }
