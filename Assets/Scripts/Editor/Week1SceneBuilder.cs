@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Escape.Core;
+using Escape.Audio;
 using Escape.Enemy;
 using Escape.Interaction;
 using Escape.Items;
@@ -10,6 +11,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 namespace Escape.EditorTools
@@ -42,8 +45,10 @@ namespace Escape.EditorTools
         [MenuItem("Escape/Build Week1 Scene")]
         public static void Build()
         {
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            SetupChaserImport();
+            BuildMenuScene();
 
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             EnsureMaterials();
             SetupAmbient();
 
@@ -69,11 +74,65 @@ namespace Escape.EditorTools
 
             new GameObject("GameFlow").AddComponent<GameFlow>();
             new GameObject("HUD").AddComponent<HUD>();
+            new GameObject("GameAudio").AddComponent<GameAudio>();
+            BuildPostProcessing();
 
             System.IO.Directory.CreateDirectory("Assets/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
-            AddToBuildSettings(ScenePath);
+            SetBuildScenes(MenuScenePath, ScenePath);
             Debug.Log("[Week1SceneBuilder] 씬 생성 완료: " + ScenePath);
+        }
+
+        const string MenuScenePath = "Assets/Scenes/MainMenu.unity";
+
+        static void BuildMenuScene()
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            var camGo = new GameObject("Main Camera");
+            camGo.tag = "MainCamera";
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = Color.black;
+            camGo.AddComponent<AudioListener>();
+
+            new GameObject("MainMenu").AddComponent<MainMenu>();
+
+            System.IO.Directory.CreateDirectory("Assets/Scenes");
+            EditorSceneManager.SaveScene(scene, MenuScenePath);
+        }
+
+        static void BuildPostProcessing()
+        {
+            const string path = "Assets/Settings/EscapePostFX.asset";
+            System.IO.Directory.CreateDirectory("Assets/Settings");
+            AssetDatabase.DeleteAsset(path);
+
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, path);
+
+            var vignette = profile.Add<Vignette>(true);
+            vignette.intensity.Override(0.42f);
+            vignette.smoothness.Override(0.55f);
+
+            var color = profile.Add<ColorAdjustments>(true);
+            color.saturation.Override(-35f);
+            color.contrast.Override(15f);
+            color.postExposure.Override(-0.2f);
+
+            var grain = profile.Add<FilmGrain>(true);
+            grain.type.Override(FilmGrainLookup.Thin1);
+            grain.intensity.Override(0.35f);
+
+            foreach (var comp in profile.components)
+                AssetDatabase.AddObjectToAsset(comp, profile);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
+
+            var go = new GameObject("PostProcessing");
+            var volume = go.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.sharedProfile = profile;
         }
 
         // 배치 모드(unity run)에서 호출하는 진입점
@@ -395,6 +454,7 @@ namespace Escape.EditorTools
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             cam.AddComponent<AudioListener>();
+            cam.AddComponent<UniversalAdditionalCameraData>().renderPostProcessing = true;
 
             var lightObj = new GameObject("Flashlight");
             lightObj.transform.SetParent(camRoot, false);
@@ -429,37 +489,128 @@ namespace Escape.EditorTools
 
         static void BuildChaser(Transform player, Transform[] waypoints)
         {
-            var chaser = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            chaser.name = "Chaser";
-            chaser.transform.position = CellCenter(2, 2) + Vector3.up * 1.0f;
-            chaser.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
-            chaser.GetComponent<Renderer>().sharedMaterial = chaserMat;
-            Object.DestroyImmediate(chaser.GetComponent<Collider>());
+            var chaser = new GameObject("Chaser");
+            chaser.transform.position = CellCenter(2, 2) + Vector3.up * 0.05f;
+
+            float height = AttachChaserVisual(chaser.transform);
 
             var agent = chaser.AddComponent<NavMeshAgent>();
-            agent.height = 2f;
+            agent.height = height;
             agent.radius = 0.4f;
             agent.acceleration = 12f;
             agent.angularSpeed = 240f;
             agent.stoppingDistance = 0.3f;
 
+            float headY = height * 0.9f;
+
             var eye = new GameObject("Eye").transform;
             eye.SetParent(chaser.transform, false);
-            eye.localPosition = new Vector3(0f, 0.6f, 0.3f);
+            eye.localPosition = new Vector3(0f, headY, 0.2f);
+
+            // 잡히는 연출용: 머리 위치(카메라는 GameFlow가 이 앞에 놓는다) + 붉은 조명
+            var face = new GameObject("FaceCamPoint").transform;
+            face.SetParent(chaser.transform, false);
+            face.localPosition = new Vector3(0f, headY, 0.1f);
+            var faceLight = new GameObject("FaceLight").AddComponent<Light>();
+            faceLight.transform.SetParent(face, false);
+            faceLight.transform.localPosition = new Vector3(0f, 0.1f, 0.8f);
+            faceLight.type = LightType.Point;
+            faceLight.range = 4f;
+            faceLight.intensity = 2.5f;
+            faceLight.color = new Color(1f, 0.25f, 0.2f);
 
             var ai = chaser.AddComponent<ChaserAI>();
             var so = new SerializedObject(ai);
             so.FindProperty("eye").objectReferenceValue = eye;
+            so.FindProperty("faceCamPoint").objectReferenceValue = face;
             so.ApplyModifiedPropertiesWithoutUndo();
             ai.Configure(player, waypoints);
             EditorUtility.SetDirty(ai);
         }
 
-        static void AddToBuildSettings(string path)
+        /// <summary>Varco에서 가져온 FBX의 임포트 설정: URP 재질로 변환, 텍스처 추출.</summary>
+        static void SetupChaserImport()
         {
-            var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            if (scenes.Exists(s => s.path == path)) return;
-            scenes.Insert(0, new EditorBuildSettingsScene(path, true));
+            var imp = AssetImporter.GetAtPath(ChaserModelPath) as ModelImporter;
+            if (imp == null) return;
+
+            imp.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
+            imp.animationType = ModelImporterAnimationType.Generic;
+            imp.importCameras = false;
+            imp.importLights = false;
+            imp.SaveAndReimport();
+
+            const string texDir = "Assets/Models/Chaser/Textures";
+            System.IO.Directory.CreateDirectory(texDir);
+            imp.ExtractTextures(texDir);
+            AssetDatabase.Refresh();
+            imp.SaveAndReimport();
+        }
+
+        const string ChaserModelPath = "Assets/Models/Chaser/Chaser.fbx";
+        const float ChaserHeight = 2.4f;
+
+        /// <summary>
+        /// 추적자 외형을 붙이고 키(높이)를 돌려준다. Varco 모델이 있으면 그걸, 없으면 캡슐을 쓴다.
+        /// 모델은 발이 바닥에 닿고 가로세로가 가운데에 오도록 크기와 위치를 맞춘다.
+        /// </summary>
+        static float AttachChaserVisual(Transform root)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ChaserModelPath);
+            if (prefab == null)
+            {
+                var cap = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                cap.name = "Visual";
+                cap.transform.SetParent(root, false);
+                cap.transform.localPosition = new Vector3(0f, 1f, 0f);
+                cap.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
+                cap.GetComponent<Renderer>().sharedMaterial = chaserMat;
+                Object.DestroyImmediate(cap.GetComponent<Collider>());
+                return 2f;
+            }
+
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            model.name = "Visual";
+            model.transform.SetParent(root, false);
+            model.transform.localPosition = Vector3.zero;
+            model.transform.localRotation = Quaternion.identity;
+
+            foreach (var c in model.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+
+            var b = GetBounds(model);
+            float scale = b.size.y > 0.001f ? ChaserHeight / b.size.y : 1f;
+            model.transform.localScale = Vector3.one * scale;
+
+            b = GetBounds(model);
+            Vector3 offset = new Vector3(root.position.x - b.center.x, root.position.y - b.min.y, root.position.z - b.center.z);
+            model.transform.position += offset;
+
+            Debug.Log($"[Week1SceneBuilder] 추적자 모델 적용: 높이 {b.size.y:F2}m, 폭 {b.size.x:F2}x{b.size.z:F2}, 배율 {scale:F3}");
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+                foreach (var m in r.sharedMaterials)
+                    Debug.Log($"[Week1SceneBuilder]  재질 {(m != null ? m.name : "null")} / 셰이더 {(m != null ? m.shader.name : "-")}");
+
+            return ChaserHeight;
+        }
+
+        static Bounds GetBounds(GameObject go)
+        {
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            var b = new Bounds(go.transform.position, Vector3.zero);
+            bool first = true;
+            foreach (var r in renderers)
+            {
+                if (first) { b = r.bounds; first = false; }
+                else b.Encapsulate(r.bounds);
+            }
+            return b;
+        }
+
+        // 빌드 순서: 0 = 메인 메뉴, 1 = 게임
+        static void SetBuildScenes(params string[] paths)
+        {
+            var scenes = new List<EditorBuildSettingsScene>();
+            foreach (var p in paths) scenes.Add(new EditorBuildSettingsScene(p, true));
             EditorBuildSettings.scenes = scenes.ToArray();
         }
     }

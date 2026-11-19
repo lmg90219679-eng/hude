@@ -84,10 +84,11 @@ namespace Escape.UI
 
             if (flow.State == GameState.Caught)
             {
-                GUI.color = new Color(0, 0, 0, 0.85f);
+                GUI.color = new Color(0, 0, 0, flow.FadeAlpha);
                 GUI.DrawTexture(new Rect(0, 0, w, h), Texture2D.whiteTexture);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(0, h * 0.4f, w, 80), "잡혔다...", big);
+                if (flow.FadeAlpha > 0.95f)
+                    GUI.Label(new Rect(0, h * 0.4f, w, 80), "잡혔다...", big);
             }
             else if (flow.State == GameState.Cleared)
             {
@@ -95,7 +96,7 @@ namespace Escape.UI
                 GUI.DrawTexture(new Rect(0, 0, w, h), Texture2D.whiteTexture);
                 GUI.color = Color.white;
                 GUI.Label(new Rect(0, h * 0.35f, w, 80), "탈출 성공!", big);
-                GUI.Label(new Rect(0, h * 0.5f, w, 40), $"클리어 시간 {FormatTime(flow.ClearTime)}   (R: 다시 시작)", center);
+                GUI.Label(new Rect(0, h * 0.5f, w, 40), $"클리어 시간 {FormatTime(flow.ClearTime)}   (R: 다시 시작   M: 메인 메뉴)", center);
             }
         }
 

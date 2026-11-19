@@ -20,6 +20,9 @@ namespace Escape.Enemy
         [SerializeField] Transform player;
         [SerializeField] Transform eye;
 
+        [Tooltip("잡히는 연출에서 카메라가 놓일 자리. 추적자 얼굴 앞에 둔다.")]
+        [SerializeField] Transform faceCamPoint;
+
         [Header("Patrol")]
         [SerializeField] Transform[] waypoints;
         [SerializeField] float patrolSpeed = 2f;
@@ -50,6 +53,7 @@ namespace Escape.Enemy
         Vector3 lastKnownPosition;
 
         public State Current { get; private set; } = State.Patrol;
+        public Transform FaceCamPoint => faceCamPoint != null ? faceCamPoint : eye;
 
         void Awake()
         {

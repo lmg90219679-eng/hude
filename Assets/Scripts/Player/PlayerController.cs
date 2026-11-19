@@ -32,6 +32,9 @@ namespace Escape.Player
         [Header("Noise")]
         [SerializeField] float footstepInterval = 0.5f;
 
+        /// <summary>발소리 재생용. (웅크림, 달리기)</summary>
+        public static event System.Action<bool, bool> Stepped;
+
         CharacterController controller;
         float pitch;
         float verticalVelocity;
@@ -160,6 +163,7 @@ namespace Escape.Player
                          : IsSprinting ? NoiseSystem.SprintRadius
                          : NoiseSystem.WalkRadius;
             NoiseSystem.Emit(transform.position, radius);
+            Stepped?.Invoke(IsCrouching, IsSprinting);
             stepTimer = IsSprinting ? footstepInterval * 0.7f : footstepInterval;
         }
     }
