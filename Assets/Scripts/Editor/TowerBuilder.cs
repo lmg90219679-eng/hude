@@ -358,18 +358,69 @@ namespace Escape.EditorTools
         /// 서랍장 하나: 몸통 + 밀려 나오는 서랍 + 물건이 놓이는 자리. 방 중심을 향해 서랍이 열린다.
         /// 지금은 기본 도형이고, 나중에 Varco 모델로 바꿀 때도 이 구조(Body, Drawer, ItemAnchor)를 유지한다.
         /// </summary>
+        const string CabinetPrefabPath = "Assets/Prefabs/Cabinet.prefab";
+        static Material metalCabinetTint;
+
         static Container BuildContainer(Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
         {
-            var root = new GameObject(metal ? "MetalCabinet" : "Cabinet").transform;
-            root.SetParent(parent);
-            root.position = roomCenter + new Vector3(slot.x, 0f, slot.y);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CabinetPrefabPath);
+            if (prefab != null) return BuildModelContainer(prefab, parent, floor, room, roomCenter, slot, metal);
+            return BuildPrimitiveContainer(parent, floor, room, roomCenter, slot, metal);
+        }
 
-            Vector3 toCenter = roomCenter - root.position;
+        static Quaternion FaceRoomCenter(Vector3 position, Vector3 roomCenter)
+        {
+            Vector3 toCenter = roomCenter - position;
             toCenter.y = 0f;
             Vector3 face = Mathf.Abs(toCenter.x) > Mathf.Abs(toCenter.z)
                 ? new Vector3(Mathf.Sign(toCenter.x), 0f, 0f)
                 : new Vector3(0f, 0f, Mathf.Sign(toCenter.z));
-            root.rotation = Quaternion.LookRotation(face);
+            return Quaternion.LookRotation(face);
+        }
+
+        /// <summary>Varco 서랍장 모델(Body, Drawer, ItemAnchor)로 서랍장을 만든다. 방 중심을 향해 서랍이 열린다.</summary>
+        static Container BuildModelContainer(GameObject prefab, Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
+        {
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.name = metal ? "MetalCabinet" : "Cabinet";
+            go.transform.SetParent(parent);
+            go.transform.position = roomCenter + new Vector3(slot.x, 0f, slot.y);
+            go.transform.rotation = FaceRoomCenter(go.transform.position, roomCenter);
+
+            if (metal)
+            {
+                // 간호사실 금속 서랍장: 차갑고 푸르스름하게 눌러서 구분한다
+                if (metalCabinetTint == null)
+                {
+                    var src = go.GetComponentInChildren<Renderer>().sharedMaterial;
+                    metalCabinetTint = new Material(src) { name = "CabinetMetalTint" };
+                    metalCabinetTint.SetColor("_BaseColor", new Color(0.55f, 0.65f, 0.8f));
+                    AssetDatabase.CreateAsset(metalCabinetTint, "Assets/Materials/CabinetMetalTint.mat");
+                }
+                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = metalCabinetTint;
+            }
+
+            var cont = go.AddComponent<Container>();
+            var so = new SerializedObject(cont);
+            so.FindProperty("drawer").objectReferenceValue = go.transform.Find("Drawer");
+            so.FindProperty("itemAnchor").objectReferenceValue = go.transform.Find("ItemAnchor");
+            so.ApplyModifiedPropertiesWithoutUndo();
+            cont.floor = floor;
+            cont.room = room;
+            cont.metalDrawer = metal;
+            EditorUtility.SetDirty(cont);
+            return cont;
+        }
+
+        /// <summary>
+        /// 서랍장 하나: 몸통 + 밀려 나오는 서랍 + 물건이 놓이는 자리. (모델이 없을 때 쓰는 기본 도형 버전)
+        /// </summary>
+        static Container BuildPrimitiveContainer(Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
+        {
+            var root = new GameObject(metal ? "MetalCabinet" : "Cabinet").transform;
+            root.SetParent(parent);
+            root.position = roomCenter + new Vector3(slot.x, 0f, slot.y);
+            root.rotation = FaceRoomCenter(root.position, roomCenter);
 
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = "Body";
@@ -386,14 +437,6 @@ namespace Escape.EditorTools
             drawer.GetComponent<Renderer>().sharedMaterial = metal ? metalDrawerMat : drawerMat;
             Object.DestroyImmediate(drawer.GetComponent<Collider>());
 
-            var handle = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            handle.name = "Handle";
-            handle.transform.SetParent(drawer.transform, false);
-            handle.transform.localPosition = new Vector3(0f, 0f, 0.56f);
-            handle.transform.localScale = new Vector3(0.22f / 0.86f, 0.04f / 0.25f, 0.04f / 0.5f);
-            handle.GetComponent<Renderer>().sharedMaterial = metalMat;
-            Object.DestroyImmediate(handle.GetComponent<Collider>());
-
             var anchor = new GameObject("ItemAnchor").transform;
             anchor.SetParent(root, false);
             anchor.localPosition = new Vector3(0f, 0.76f, 0.06f);
@@ -409,32 +452,46 @@ namespace Escape.EditorTools
             EditorUtility.SetDirty(cont);
             return cont;
         }
-
         static void BuildWardrobe(Transform parent, Vector3 roomCenter)
         {
-            var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            w.name = "Wardrobe";
-            w.transform.SetParent(parent);
-            w.transform.position = roomCenter + new Vector3(WardrobeSlot.x, 1.1f, WardrobeSlot.y);
-            w.transform.localScale = new Vector3(0.7f, 2.2f, 1.0f);
-            w.GetComponent<Renderer>().sharedMaterial = wardrobeMat;
+            // 숨는 곳: 철제 로커 (Varco 모델). 문이 방 안쪽(서쪽)을 향한다.
+            var holder = new GameObject("Locker").transform;
+            holder.SetParent(parent);
+            holder.position = roomCenter + new Vector3(WardrobeSlot.x, 0f, WardrobeSlot.y);
+
+            var model = Escape.EditorTools.PropTools.Instantiate("SteelLocker", holder, 1.9f, 0f, yaw: -90f);
+            if (model != null)
+            {
+                var lb = Escape.EditorTools.PropTools.Bounds(model);
+                var col = holder.gameObject.AddComponent<BoxCollider>();
+                col.center = holder.InverseTransformPoint(lb.center);
+                col.size = lb.size;
+            }
+            else
+            {
+                var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                w.name = "Wardrobe";
+                w.transform.SetParent(holder, false);
+                w.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+                w.transform.localScale = new Vector3(0.7f, 2.2f, 1.0f);
+                w.GetComponent<Renderer>().sharedMaterial = wardrobeMat;
+            }
 
             var hide = new GameObject("HidePoint").transform;
-            hide.SetParent(w.transform);
-            hide.position = new Vector3(w.transform.position.x, roomCenter.y + 0.1f, w.transform.position.z);
+            hide.SetParent(holder);
+            hide.position = new Vector3(holder.position.x, roomCenter.y + 0.1f, holder.position.z);
             hide.rotation = Quaternion.Euler(0f, -90f, 0f);   // 방 안쪽(서쪽)을 본다
 
             var exit = new GameObject("ExitPoint").transform;
-            exit.SetParent(w.transform);
-            exit.position = new Vector3(w.transform.position.x - 1.4f, roomCenter.y + 0.1f, w.transform.position.z);
+            exit.SetParent(holder);
+            exit.position = new Vector3(holder.position.x - 1.2f, roomCenter.y + 0.1f, holder.position.z);
 
-            var spot = w.AddComponent<HidingSpot>();
+            var spot = holder.gameObject.AddComponent<HidingSpot>();
             var so = new SerializedObject(spot);
             so.FindProperty("hidePoint").objectReferenceValue = hide;
             so.FindProperty("exitPoint").objectReferenceValue = exit;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
-
         // ---------- 계단 ----------
 
         /// <summary>

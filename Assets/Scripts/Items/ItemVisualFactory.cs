@@ -107,7 +107,8 @@ namespace Escape.Items
             if (glow.HasValue)
             {
                 mat.EnableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", glow.Value * 1.5f);
+                // 세기가 1을 넘으면 후처리(대비)가 색을 틀어서 청록으로 번진다. 약하게만 빛나게 한다.
+                mat.SetColor("_EmissionColor", glow.Value * 0.45f);
             }
             r.sharedMaterial = mat;
         }
