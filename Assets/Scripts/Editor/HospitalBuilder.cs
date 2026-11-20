@@ -17,13 +17,33 @@ namespace Escape.EditorTools
         // 자리: 방 중심 기준 (x, z)와, 소품이 바라볼 방향(방 안쪽)의 yaw
         struct AnchorSpot { public Vector2 pos; public float faceYaw; }
 
-        static readonly Dictionary<string, AnchorSpot> Anchors = new Dictionary<string, AnchorSpot>
+        /// <summary>
+        /// 소품 자리 이름(NW, NE, SW, SE)을 방 크기에 맞는 좌표로 바꾼다. 좌표는 방 중심 기준 (x, z).
+        /// - 일반 방: 서/동쪽 벽 가까이, 방 중심선 위아래. 소품은 방 안쪽을 본다.
+        /// - 복도·계단 홀(깊이 4m 이하): 긴 벽을 따라 놓고 반대쪽 벽을 본다.
+        /// </summary>
+        static AnchorSpot ResolveAnchor(string name, int room)
         {
-            { "NW", new AnchorSpot { pos = new Vector2(-2.4f,  1.8f), faceYaw =  90f } },   // 서쪽 벽 가까이, 동쪽을 본다
-            { "NE", new AnchorSpot { pos = new Vector2( 2.4f,  1.8f), faceYaw = 270f } },   // 동쪽 벽 가까이, 서쪽을 본다
-            { "SW", new AnchorSpot { pos = new Vector2(-1.9f, -1.8f), faceYaw =  90f } },
-            { "SE", new AnchorSpot { pos = new Vector2( 2.0f, -1.8f), faceYaw = 270f } },
-        };
+            Rect r = TowerLayout.RoomRect(room);
+            float hx = r.width * 0.5f, hz = r.height * 0.5f;
+            bool north = name[0] == 'N', east = name[1] == 'E';
+            float sx = east ? 1f : -1f, sz = north ? 1f : -1f;
+
+            if (hz < 3f)
+                return new AnchorSpot { pos = new Vector2(sx * hx * 0.5f, sz * (hz - 0.75f)), faceYaw = north ? 180f : 0f };
+
+            float x = sx * (hx - (north ? 1.6f : 2.1f));
+            float z = sz * (hz - (hz >= 4.5f ? 2.5f : 2.2f));
+            return new AnchorSpot { pos = new Vector2(x, z), faceYaw = east ? 270f : 90f };
+        }
+
+        /// <summary>계단 홀에서는 계단이 붙은 쪽 벽(서쪽 홀은 서쪽, 동쪽 홀은 동쪽)에 소품을 놓지 않는다.</summary>
+        static bool AnchorUsable(int room, string anchorName)
+        {
+            if (room == TowerLayout.WestStairRoom && anchorName.EndsWith("W")) return false;
+            if (room == TowerLayout.EastStairRoom && anchorName.EndsWith("E")) return false;
+            return true;
+        }
 
         struct PropSpec
         {
@@ -169,7 +189,8 @@ namespace Escape.EditorTools
         {
             if (!System.IO.File.Exists($"{PropTools.PropsDir}/{model}/{model}.fbx")) return false;
             if (!PropSpecs.TryGetValue(model, out var spec)) return false;
-            var anchor = Anchors[anchorName];
+            if (!AnchorUsable(room, anchorName)) return false;
+            var anchor = ResolveAnchor(anchorName, room);
 
             Vector3 center = TowerLayout.RoomCenter(floor, room);
             var holder = new GameObject($"{model}_{TowerLayout.ShortLabel(floor)}_{room}_{anchorName}").transform;

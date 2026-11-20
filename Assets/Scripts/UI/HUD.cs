@@ -174,8 +174,7 @@ namespace Escape.UI
 
             int floor = map.CurrentFloor;
             float x0 = MapMargin, y0 = MapMargin + 24f;
-            float cell = MapSize / TowerLayout.Grid;
-
+            
             // 바탕과 테두리
             Fill(new Rect(x0 - 4, y0 - 28, MapSize + 8, MapSize + 32), new Color(0f, 0f, 0f, 0.7f));
             Fill(new Rect(x0, y0, MapSize, MapSize), new Color(0.04f, 0.04f, 0.05f, 0.9f));
@@ -187,7 +186,7 @@ namespace Escape.UI
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
                 if (!map.Visited(floor, room)) continue;
-                Rect r = RoomRect(x0, y0, cell, room);
+                Rect r = RoomRect(x0, y0, room);
                 bool here = room == map.CurrentRoom;
                 Fill(new Rect(r.x + 2, r.y + 2, r.width - 4, r.height - 4),
                      here ? new Color(0.45f, 0.5f, 0.6f, 0.95f) : new Color(0.28f, 0.3f, 0.36f, 0.95f));
@@ -198,8 +197,8 @@ namespace Escape.UI
             {
                 if (d == null || d.floor != floor || d.secret) continue;
                 if (!map.Visited(floor, d.roomA) && !map.Visited(floor, d.roomB)) continue;
-                Rect a = RoomRect(x0, y0, cell, d.roomA), b = RoomRect(x0, y0, cell, d.roomB);
-                Vector2 mid = (a.center + b.center) * 0.5f;
+                Vector3 dp = d.transform.position;
+                Vector2 mid = new Vector2(x0 + dp.x / TowerLayout.Span * MapSize, y0 + (1f - dp.z / TowerLayout.Span) * MapSize);
                 Color c = d.IsLocked ? new Color(0.9f, 0.2f, 0.2f) : (d.IsOpen ? new Color(0.5f, 0.85f, 0.5f) : new Color(0.75f, 0.75f, 0.75f));
                 Fill(new Rect(mid.x - 5, mid.y - 5, 10, 10), c);
             }
@@ -208,18 +207,18 @@ namespace Escape.UI
             foreach (var s in stairs)
             {
                 if (s == null || s.floor != floor || !map.Visited(floor, s.room)) continue;
-                Rect r = RoomRect(x0, y0, cell, s.room);
+                Rect r = RoomRect(x0, y0, s.room);
                 GUI.Label(new Rect(r.x + (s.up ? 3 : r.width - 24), r.y + 2, 22, 18), s.up ? "▲" : "▼", small);
             }
             if (floor == TowerLayout.GroundFloor && map.Visited(floor, TowerLayout.ExitRoom))
             {
-                Rect r = RoomRect(x0, y0, cell, TowerLayout.ExitRoom);
+                Rect r = RoomRect(x0, y0, TowerLayout.ExitRoom);
                 GUI.Label(new Rect(r.x, r.yMax - 20, r.width, 18), "탈출구", small);
             }
 
             // 플레이어 (노란 점 + 바라보는 방향 표시)
             Vector3 p = map.PlayerPosition;
-            float span = TowerLayout.Grid * TowerLayout.Cell;
+            float span = TowerLayout.Span;
             float px = x0 + Mathf.Clamp01(p.x / span) * MapSize;
             float py = y0 + (1f - Mathf.Clamp01(p.z / span)) * MapSize;
             Fill(new Rect(px - 4, py - 4, 8, 8), new Color(1f, 0.9f, 0.2f));
@@ -227,10 +226,11 @@ namespace Escape.UI
             Fill(new Rect(px + Mathf.Sin(yaw) * 9f - 2, py - Mathf.Cos(yaw) * 9f - 2, 4, 4), new Color(1f, 0.9f, 0.2f));
         }
 
-        static Rect RoomRect(float x0, float y0, float cell, int room)
+        static Rect RoomRect(float x0, float y0, int room)
         {
-            int i = TowerLayout.RoomX(room), j = TowerLayout.RoomZ(room);
-            return new Rect(x0 + i * cell, y0 + (TowerLayout.Grid - 1 - j) * cell, cell, cell);
+            Rect w = TowerLayout.RoomRect(room);   // 월드 영역 (z가 클수록 지도 위쪽)
+            float k = MapSize / TowerLayout.Span;
+            return new Rect(x0 + w.xMin * k, y0 + (TowerLayout.Span - w.yMax) * k, w.width * k, w.height * k);
         }
 
         // ---------- 엘리베이터 ----------

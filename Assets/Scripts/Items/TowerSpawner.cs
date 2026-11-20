@@ -35,8 +35,8 @@ namespace Escape.Items
             foreach (var c in all) c.Fill(null);
             var free = new List<Container>(all);
 
-            // 시작부터 갈 수 있는 방: 서쪽 계단방, 가운데 방, 동쪽 계단방
-            var reach = new HashSet<int> { TowerLayout.WestStairRoom, TowerLayout.CenterRoom, TowerLayout.EastStairRoom };
+            // 시작부터 갈 수 있는 방: 서쪽 계단 홀, 중앙 복도, 동쪽 계단 홀, 복도에 바로 이어진 북쪽 가운데 방
+            var reach = new HashSet<int> { TowerLayout.WestStairRoom, TowerLayout.CenterRoom, TowerLayout.EastStairRoom, TowerLayout.StartRoom };
 
             // 직원 출입카드: 간호사실의 금속 서랍에 고정 (열면 큰 소음이 난다)
             var metal = free.FirstOrDefault(c => c.metalDrawer);

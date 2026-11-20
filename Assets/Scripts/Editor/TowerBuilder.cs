@@ -15,11 +15,12 @@ namespace Escape.EditorTools
     /// <summary>
     /// 5개 층 건물(지하2, 지하1, 1층, 2층, 3층)을 만든다. 메뉴: Escape > Build Tower Scene
     ///
-    /// 층마다: 3x3 방(각 8m), 방 사이 12개 통로.
-    /// - 서쪽 계단방(0,1) - 가운데 방(1,1) - 동쪽 계단방(2,1)은 열쇠 없이 이어진다 (어느 계단으로 와도 막히지 않게).
-    /// - 나머지 6개 방은 "잠긴 문"으로 이어진다. 문마다 전용 방 열쇠가 있고, 열쇠는 문을 열기 전에 갈 수 있는 방에 숨는다.
+    /// 층마다 폐병원 평면 (TowerLayout 참고): 가운데 4m 폭 복도, 남쪽/북쪽 병동의 방들은 크기가 제각각.
+    /// - 복도 양 끝은 방화문 너머의 계단 홀 (서쪽/동쪽). 계단은 거기까지 가야 보인다.
+    /// - 시작 방(북쪽 가운데 방), 복도, 계단 홀은 열쇠 없이 이어진다 (어느 계단으로 와도 막히지 않게).
+    /// - 나머지 5개 방은 "잠긴 문"으로 이어진다. 문마다 전용 방 열쇠가 있고, 열쇠는 문을 열기 전에 갈 수 있는 방에 숨는다.
     /// - 열리는 순서(트리)는 빌드 때 무작위로 정하고, 열쇠 위치는 매 판 무작위다 (TowerSpawner).
-    /// - 계단은 서쪽/동쪽 두 곳. 각 계단통에 올라가는 계단과 내려가는 계단이 하나씩 있다.
+    /// - 계단 홀마다 올라가는 계단과 내려가는 계단이 하나씩 있다.
     /// </summary>
     public static partial class Week1SceneBuilder
     {
@@ -39,21 +40,45 @@ namespace Escape.EditorTools
 
         static readonly List<DoorRequest> doorRequests = new List<DoorRequest>();
 
-        // 방 안 배치 슬롯 (방 중심 기준 x, z)
-        static readonly Vector2[] ContainerSlots = { new Vector2(-3f, 3.3f), new Vector2(3f, 3.3f), new Vector2(-3.3f, -3f) };
-        static readonly Vector2[] StairRoomContainerSlots = { new Vector2(-3.3f, -3f), new Vector2(3.3f, -3f) };
-        static readonly Vector2 WardrobeSlot = new Vector2(3.4f, -2.9f);
-        static readonly Vector2 UpStairSlot = new Vector2(-2.4f, 3.45f);
-        static readonly Vector2 DownStairSlot = new Vector2(2.4f, 3.45f);
+        // 방 사이 통로 12곳 (TowerLayout 평면도 참고). 문의 중심 좌표(x, z)와 벽 방향.
+        struct Edge { public int a, b; public bool vertical; public float x, z; }
+
+        static readonly Edge[] Edges =
+        {
+            new Edge { a = 0, b = 1, vertical = true,  x = 7f,  z = 5f  },    // 0  남쪽 병동 안
+            new Edge { a = 1, b = 2, vertical = true,  x = 17f, z = 5f  },    // 1
+            new Edge { a = 6, b = 7, vertical = true,  x = 9f,  z = 19f },    // 2  북쪽 병동 안
+            new Edge { a = 7, b = 8, vertical = true,  x = 15f, z = 19f },    // 3
+            new Edge { a = 0, b = 3, vertical = false, x = 3f,  z = 10f },    // 4  남쪽 병동 <-> 복도 줄
+            new Edge { a = 1, b = 4, vertical = false, x = 12f, z = 10f },    // 5
+            new Edge { a = 2, b = 5, vertical = false, x = 21f, z = 10f },    // 6
+            new Edge { a = 3, b = 6, vertical = false, x = 3f,  z = 14f },    // 7  복도 줄 <-> 북쪽 병동
+            new Edge { a = 4, b = 7, vertical = false, x = 12f, z = 14f },    // 8
+            new Edge { a = 5, b = 8, vertical = false, x = 21f, z = 14f },    // 9
+            new Edge { a = 3, b = 4, vertical = true,  x = 6f,  z = 12f },    // 10 서쪽 계단 홀의 방화문
+            new Edge { a = 4, b = 5, vertical = true,  x = 18f, z = 12f },    // 11 동쪽 계단 홀의 방화문
+        };
+        const int EdgeStairWest = 10, EdgeStairEast = 11, EdgeStartRoom = 8;   // 열쇠 없이 지나는 문
+
+        // 벽 한 줄: 같은 좌표에 놓인 벽 (문이 있는 통로는 틈을 낸다)
+        struct WallLine { public bool vertical; public float line, from, to; public int[] edges; }
+
+        static readonly WallLine[] InnerWalls =
+        {
+            new WallLine { vertical = false, line = 10f, from = 0f,  to = 24f, edges = new[] { 4, 5, 6 } },
+            new WallLine { vertical = false, line = 14f, from = 0f,  to = 24f, edges = new[] { 7, 8, 9 } },
+            new WallLine { vertical = true,  line = 7f,  from = 0f,  to = 10f, edges = new[] { 0 } },
+            new WallLine { vertical = true,  line = 17f, from = 0f,  to = 10f, edges = new[] { 1 } },
+            new WallLine { vertical = true,  line = 9f,  from = 14f, to = 24f, edges = new[] { 2 } },
+            new WallLine { vertical = true,  line = 15f, from = 14f, to = 24f, edges = new[] { 3 } },
+            new WallLine { vertical = true,  line = 6f,  from = 10f, to = 14f, edges = new[] { 10 } },
+            new WallLine { vertical = true,  line = 18f, from = 10f, to = 14f, edges = new[] { 11 } },
+        };
 
         class FloorPlan
         {
-            public readonly List<(int a, int b, bool isVertical, int line, int index)> Edges =
-                new List<(int, int, bool, int, int)>();
-            public readonly Dictionary<(bool v, int line, int index), DoorKind?> Type =
-                new Dictionary<(bool, int, int), DoorKind?>();   // null = 막힌 벽
-            public readonly List<(bool v, int line, int index, int newRoom)> Tree =
-                new List<(bool, int, int, int)>();
+            public readonly Dictionary<int, DoorKind?> Type = new Dictionary<int, DoorKind?>();   // null = 막힌 벽
+            public readonly List<(int edge, int newRoom)> Tree = new List<(int, int)>();
         }
 
         public static void Build()
@@ -84,14 +109,14 @@ namespace Escape.EditorTools
             BuildElevatorGeometry(map.transform);
             BuildNavMeshForTower(map);
 
-            // 플레이어: 1층 서쪽 계단방에서 시작
-            var player = BuildPlayer(TowerLayout.RoomCenter(TowerLayout.GroundFloor, TowerLayout.StartRoom));
+            // 플레이어: 1층 북쪽 가운데 방(상담실)에서 시작. 계단은 복도 양 끝 방화문 너머에 있어서 직접 찾아야 한다
+            var player = BuildPlayer(TowerLayout.RoomCenter(TowerLayout.GroundFloor, TowerLayout.StartRoom) + new Vector3(0f, 0f, 1.5f));
 
             // 층마다 추적자 1명
             for (int f = 0; f < TowerLayout.Floors; f++)
             {
                 var wps = BuildFloorWaypoints(f, rng);
-                int startRoom = f == TowerLayout.GroundFloor ? 8 : (f % 2 == 0 ? 8 : 6);
+                int startRoom = f == TowerLayout.GroundFloor ? 0 : (f % 2 == 0 ? 8 : 6);
                 BuildChaser(player.transform, wps, TowerLayout.RoomCenter(f, startRoom), $"Chaser_{TowerLayout.ShortLabel(f)}");
             }
 
@@ -126,60 +151,58 @@ namespace Escape.EditorTools
 
         // ---------- 층 설계 (방 연결) ----------
 
-        static IEnumerable<(int a, int b, bool v, int line, int index)> AllEdges()
-        {
-            // 세로 벽 x = line*Cell (line 1..2), 행 j: (line-1, j) - (line, j)
-            for (int line = 1; line < TowerLayout.Grid; line++)
-                for (int j = 0; j < TowerLayout.Grid; j++)
-                    yield return (TowerLayout.RoomIndex(line - 1, j), TowerLayout.RoomIndex(line, j), true, line, j);
-            // 가로 벽 z = line*Cell (line 1..2), 열 i: (i, line-1) - (i, line)
-            for (int line = 1; line < TowerLayout.Grid; line++)
-                for (int i = 0; i < TowerLayout.Grid; i++)
-                    yield return (TowerLayout.RoomIndex(i, line - 1), TowerLayout.RoomIndex(i, line), false, line, i);
-        }
-
         static FloorPlan MakePlan(System.Random rng)
         {
             var plan = new FloorPlan();
-            var all = AllEdges().ToList();
 
-            var reach = new HashSet<int> { TowerLayout.WestStairRoom, TowerLayout.CenterRoom, TowerLayout.EastStairRoom };
-            var used = new HashSet<(bool, int, int)>();
+            // 열쇠 없이 갈 수 있는 곳: 계단 홀 둘, 중앙 복도, 시작 방. (어느 계단으로 올라와도, 어디서 시작해도 막히지 않게)
+            var reach = new HashSet<int> { TowerLayout.WestStairRoom, TowerLayout.CenterRoom, TowerLayout.EastStairRoom, TowerLayout.StartRoom };
+            var used = new HashSet<int> { EdgeStairWest, EdgeStairEast, EdgeStartRoom };
+            foreach (int e in used) plan.Type[e] = DoorKind.Normal;
 
-            // 서쪽 - 가운데 - 동쪽은 열쇠 없이 이어지는 일반 문
-            foreach (var e in all)
-            {
-                bool wc = (e.a == TowerLayout.WestStairRoom && e.b == TowerLayout.CenterRoom);
-                bool ce = (e.a == TowerLayout.CenterRoom && e.b == TowerLayout.EastStairRoom);
-                if (wc || ce)
-                {
-                    plan.Type[(e.v, e.line, e.index)] = DoorKind.Normal;
-                    used.Add((e.v, e.line, e.index));
-                }
-            }
-
-            // 잠긴 문으로 나머지 6개 방을 하나씩 연결 (트리). 어떤 방이든 그 전 방들에서 열쇠를 구해 열 수 있다.
+            // 잠긴 문으로 나머지 방을 하나씩 연결 (트리). 어떤 방이든 그 전 방들에서 열쇠를 구해 열 수 있다.
             while (reach.Count < TowerLayout.RoomsPerFloor)
             {
-                var candidates = all.Where(e => !used.Contains((e.v, e.line, e.index)) &&
-                                                (reach.Contains(e.a) ^ reach.Contains(e.b))).ToList();
-                var pick = candidates[rng.Next(candidates.Count)];
-                int newRoom = reach.Contains(pick.a) ? pick.b : pick.a;
-                plan.Type[(pick.v, pick.line, pick.index)] = DoorKind.Locked;
-                plan.Tree.Add((pick.v, pick.line, pick.index, newRoom));
-                used.Add((pick.v, pick.line, pick.index));
+                var candidates = Enumerable.Range(0, Edges.Length)
+                    .Where(e => !used.Contains(e) && (reach.Contains(Edges[e].a) ^ reach.Contains(Edges[e].b))).ToList();
+                int pick = candidates[rng.Next(candidates.Count)];
+                int newRoom = reach.Contains(Edges[pick].a) ? Edges[pick].b : Edges[pick].a;
+                plan.Type[pick] = DoorKind.Locked;
+                plan.Tree.Add((pick, newRoom));
+                used.Add(pick);
                 reach.Add(newRoom);
             }
 
             // 순환 통로 3개: 열쇠 없이 지나는 일반 문 (막다른 길만 있으면 쫓길 때 갇힌다)
-            var rest = all.Where(e => !used.Contains((e.v, e.line, e.index))).OrderBy(_ => rng.Next()).ToList();
+            var rest = Enumerable.Range(0, Edges.Length).Where(e => !used.Contains(e)).OrderBy(_ => rng.Next()).ToList();
             for (int k = 0; k < rest.Count; k++)
-                plan.Type[(rest[k].v, rest[k].line, rest[k].index)] = k < 3 ? DoorKind.Normal : (DoorKind?)null;
+                plan.Type[rest[k]] = k < 3 ? DoorKind.Normal : (DoorKind?)null;
 
             return plan;
         }
 
         // ---------- 층 기하 구조 ----------
+
+        /// <summary>벽 한 줄을 만든다. doors에 든 좌표마다 문틈(DoorWidth)을 낸다.</summary>
+        static void WallRun(Transform root, float y, bool vertical, float line, float from, float to, List<float> doors)
+        {
+            doors.Sort();
+            float cursor = from;
+            foreach (float d in doors)
+            {
+                float gapStart = d - DoorWidth * 0.5f, gapEnd = d + DoorWidth * 0.5f;
+                if (gapStart > cursor + 0.01f) WallPiece(root, y, vertical, line, cursor, gapStart);
+                cursor = gapEnd;
+            }
+            if (to > cursor + 0.01f) WallPiece(root, y, vertical, line, cursor, to);
+        }
+
+        static void WallPiece(Transform root, float y, bool vertical, float line, float a, float b)
+        {
+            float mid = (a + b) * 0.5f;
+            Vector3 center = vertical ? new Vector3(line, y, mid) : new Vector3(mid, y, line);
+            MakeWall(root, center, vertical ? Vector3.forward : Vector3.right, b - a);
+        }
 
         static void BuildFloorGeometry(Transform parent, int floor, FloorPlan plan)
         {
@@ -188,7 +211,7 @@ namespace Escape.EditorTools
             var root = new GameObject($"Floor_{label}").transform;
             root.SetParent(parent);
 
-            float size = Cell * Grid;
+            float size = TowerLayout.Span;
 
             // 바닥판 (두께 1m: 아래층의 천장도 겸한다)
             var slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -209,83 +232,70 @@ namespace Escape.EditorTools
                 roof.GetComponent<Renderer>().sharedMaterial = wallMat;
             }
 
-            // 바깥벽
-            for (int k = 0; k < Grid; k++)
+            // 바깥벽 네 면
+            bool top = floor == TowerLayout.Floors - 1;
+            bool ground = floor == TowerLayout.GroundFloor;
+            float lobbyX = TowerLayout.RoomCenter(floor, TowerLayout.ExitRoom).x;
+            float liftX = TowerLayout.RoomCenter(floor, TowerLayout.StartRoom).x;   // 북쪽 가운데 방 = 승강기 승강장 쪽
+
+            // 서쪽: 3층 남서쪽 방(0)에는 전기실로 통하는 숨겨진 문이 있다 (벽처럼 보인다)
+            const float elecDoorZ = 4f;
+            WallRun(root, y, true, 0f, 0f, size, top ? new List<float> { elecDoorZ } : new List<float>());
+            if (top)
             {
-                float c = k * Cell + Cell * 0.5f;
-                bool exitHere = floor == TowerLayout.GroundFloor && k == 1;   // 남쪽 바깥벽의 가운데 방 = 1층 정문
-
-                // 3층 서쪽 벽의 남쪽 방(0,0)에는 전기실로 통하는 숨겨진 문이 있다 (벽처럼 보인다)
-                bool secretHere = floor == TowerLayout.Floors - 1 && k == 0;
-                WallSegment(root, new Vector3(0f, y, c), Vector3.forward, secretHere);            // 서쪽
-                if (secretHere)
-                {
-                    doorRequests.Add(new DoorRequest
-                    {
-                        center = new Vector3(0f, y, c), along = Vector3.forward, kind = DoorKind.Secret,
-                        floor = floor, roomA = 0, roomB = 0, treeOrder = -1,
-                    });
-                }
-                WallSegment(root, new Vector3(size, y, c), Vector3.forward, false);               // 동쪽
-                // 북쪽 벽의 가운데 방(1,2)에는 엘리베이터 승강장으로 통하는 숨겨진 문이 있다 (발전기가 복구돼야 열린다)
-                bool liftHallDoor = k == 1;
-                WallSegment(root, new Vector3(c, y, size), Vector3.right, liftHallDoor);          // 북쪽
-                if (liftHallDoor)
-                {
-                    doorRequests.Add(new DoorRequest
-                    {
-                        center = new Vector3(c, y, size), along = Vector3.right, kind = DoorKind.Secret,
-                        floor = floor, roomA = 7, roomB = 7, treeOrder = -1, requiresPower = true,
-                    });
-                }
-                WallSegment(root, new Vector3(c, y, 0f), Vector3.right, exitHere);                // 남쪽
-                if (exitHere)
-                {
-                    doorRequests.Add(new DoorRequest
-                    {
-                        center = new Vector3(c, y, 0f), along = Vector3.right, kind = DoorKind.Exit,
-                        floor = floor, roomA = TowerLayout.ExitRoom, roomB = TowerLayout.ExitRoom, treeOrder = -1,
-                    });
-                }
-            }
-
-            // 안쪽 벽 12곳
-            foreach (var e in AllEdges())
-            {
-                plan.Type.TryGetValue((e.v, e.line, e.index), out DoorKind? kind);
-
-                Vector3 center, along;
-                if (e.v)
-                {
-                    center = new Vector3(e.line * Cell, y, e.index * Cell + Cell * 0.5f);
-                    along = Vector3.forward;
-                }
-                else
-                {
-                    center = new Vector3(e.index * Cell + Cell * 0.5f, y, e.line * Cell);
-                    along = Vector3.right;
-                }
-
-                if (kind == null)
-                {
-                    WallSegment(root, center, along, false);   // 막힌 벽
-                    continue;
-                }
-
-                WallSegment(root, center, along, true);        // 문틈이 있는 벽
-
-                int treeIndex = plan.Tree.FindIndex(t => t.v == e.v && t.line == e.line && t.index == e.index);
-                int roomB = e.b;
-                if (treeIndex >= 0) roomB = plan.Tree[treeIndex].newRoom;
-                int roomA = roomB == e.b ? e.a : e.b;
-
                 doorRequests.Add(new DoorRequest
                 {
-                    center = center, along = along, kind = kind.Value,
-                    floor = floor, roomA = roomA, roomB = roomB,
-                    keyId = kind == DoorKind.Locked ? $"{label}-{treeIndex + 1}" : null,
-                    treeOrder = treeIndex,
+                    center = new Vector3(0f, y, elecDoorZ), along = Vector3.forward, kind = DoorKind.Secret,
+                    floor = floor, roomA = 0, roomB = 0, treeOrder = -1,
                 });
+            }
+            // 동쪽
+            WallRun(root, y, true, size, 0f, size, new List<float>());
+            // 북쪽: 북쪽 가운데 방(7)에는 엘리베이터 승강장으로 통하는 숨겨진 문이 있다 (발전기가 복구돼야 열린다)
+            WallRun(root, y, false, size, 0f, size, new List<float> { liftX });
+            doorRequests.Add(new DoorRequest
+            {
+                center = new Vector3(liftX, y, size), along = Vector3.right, kind = DoorKind.Secret,
+                floor = floor, roomA = TowerLayout.StartRoom, roomB = TowerLayout.StartRoom, treeOrder = -1, requiresPower = true,
+            });
+            // 남쪽: 1층 정문 로비의 정문
+            WallRun(root, y, false, 0f, 0f, size, ground ? new List<float> { lobbyX } : new List<float>());
+            if (ground)
+            {
+                doorRequests.Add(new DoorRequest
+                {
+                    center = new Vector3(lobbyX, y, 0f), along = Vector3.right, kind = DoorKind.Exit,
+                    floor = floor, roomA = TowerLayout.ExitRoom, roomB = TowerLayout.ExitRoom, treeOrder = -1,
+                });
+            }
+
+            // 안쪽 벽
+            foreach (var wl in InnerWalls)
+            {
+                var gaps = new List<float>();
+                foreach (int e in wl.edges)
+                {
+                    plan.Type.TryGetValue(e, out DoorKind? kind);
+                    if (kind == null) continue;
+
+                    var ed = Edges[e];
+                    gaps.Add(ed.vertical ? ed.z : ed.x);
+
+                    int treeIndex = plan.Tree.FindIndex(t => t.edge == e);
+                    int roomB = treeIndex >= 0 ? plan.Tree[treeIndex].newRoom : ed.b;
+                    int roomA = roomB == ed.b ? ed.a : ed.b;
+
+                    doorRequests.Add(new DoorRequest
+                    {
+                        center = new Vector3(ed.x, y, ed.z),
+                        along = ed.vertical ? Vector3.forward : Vector3.right,
+                        kind = kind.Value,
+                        floor = floor, roomA = roomA, roomB = roomB,
+                        keyId = kind == DoorKind.Locked ? $"{label}-{treeIndex + 1}" : null,
+                        treeOrder = treeIndex,
+                    });
+                }
+                WallRun(root, y, wl.vertical, wl.line, wl.from, wl.to, gaps);
             }
         }
 
@@ -406,27 +416,95 @@ namespace Escape.EditorTools
         static bool IsStairRoom(int room) =>
             room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom;
 
+        struct CabinetSlot { public Vector3 pos; public Quaternion rot; }
+
+        /// <summary>벽을 따라 서랍장을 둘 수 있는 자리. 문, 계단, 소품 자리 근처(avoid)는 뺀다. 서랍은 방 안쪽으로 열린다.</summary>
+        static List<CabinetSlot> CabinetCandidates(int floor, int room, List<(Vector2 p, float r)> avoid)
+        {
+            Rect r = TowerLayout.RoomRect(room);
+            float y = TowerLayout.FloorY(floor);
+            var list = new List<CabinetSlot>();
+            const float step = 2.2f, inset = 0.75f, edge = 1.6f;
+
+            for (float x = r.xMin + edge; x <= r.xMax - edge + 0.01f; x += step)
+            {
+                list.Add(new CabinetSlot { pos = new Vector3(x, y, r.yMax - inset), rot = Quaternion.Euler(0f, 180f, 0f) });   // 북쪽 벽, 남쪽을 본다
+                list.Add(new CabinetSlot { pos = new Vector3(x, y, r.yMin + inset), rot = Quaternion.identity });               // 남쪽 벽, 북쪽을 본다
+            }
+            if (r.height > 5f)   // 복도는 좁아서 긴 벽에만 둔다
+            {
+                for (float z = r.yMin + edge; z <= r.yMax - edge + 0.01f; z += step)
+                {
+                    list.Add(new CabinetSlot { pos = new Vector3(r.xMin + inset, y, z), rot = Quaternion.Euler(0f, 90f, 0f) });    // 서쪽 벽, 동쪽을 본다
+                    list.Add(new CabinetSlot { pos = new Vector3(r.xMax - inset, y, z), rot = Quaternion.Euler(0f, 270f, 0f) });   // 동쪽 벽, 서쪽을 본다
+                }
+            }
+
+            list.RemoveAll(s =>
+            {
+                var p = new Vector2(s.pos.x, s.pos.z);
+                foreach (var a in avoid) if (Vector2.Distance(p, a.p) < a.r) return true;
+                return false;
+            });
+            return list;
+        }
+
         static void BuildFurniture(Transform parent, int floor)
         {
             var root = new GameObject($"Furniture_{TowerLayout.ShortLabel(floor)}").transform;
             root.SetParent(parent);
+            var rng = new System.Random(5000 + floor);
+
+            // 이 층에서 서랍장을 피해야 할 자리: 모든 문 앞, 계단 앞
+            var floorAvoid = new List<(Vector2 p, float r)>();
+            foreach (var d in doorRequests.Where(d => d.floor == floor))
+                floorAvoid.Add((new Vector2(d.center.x, d.center.z), 2.2f));
+            foreach (int room in new[] { TowerLayout.WestStairRoom, TowerLayout.EastStairRoom })
+                foreach (bool up in new[] { true, false })
+                    floorAvoid.Add((StairSlotXZ(room, up), 2.4f));
 
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
-                Vector3 c = TowerLayout.RoomCenter(floor, room);
+                Rect r = TowerLayout.RoomRect(room);
                 bool stairRoom = IsStairRoom(room);
-                var slots = stairRoom ? StairRoomContainerSlots : ContainerSlots;
+                var avoid = new List<(Vector2 p, float r)>(floorAvoid);
 
-                for (int s = 0; s < slots.Length; s++)
+                // 소품이 놓일 자리 (HospitalBuilder)
+                foreach (var entry in RoomProps[floor][room])
+                {
+                    string anchorName = entry.Split(':')[1];
+                    if (!AnchorUsable(room, anchorName)) continue;
+                    var a = ResolveAnchor(anchorName, room);
+                    avoid.Add((new Vector2(r.center.x + a.pos.x, r.center.y + a.pos.y), 1.7f));
+                }
+
+                // 옷장 (숨는 곳): 복도·계단 홀이 아닌 방 중 절반 정도. 동쪽 벽 남쪽 끝에 붙인다.
+                bool wardrobe = r.height > 5f && ((room + floor) % 2 == 0);
+                if (wardrobe)
+                {
+                    var lockerPos = new Vector3(r.xMax - 0.6f, TowerLayout.FloorY(floor), r.yMin + 1.5f);
+                    BuildWardrobe(root, lockerPos);
+                    avoid.Add((new Vector2(lockerPos.x, lockerPos.z), 1.9f));
+                }
+
+                // 서랍장: 계단 홀 1개, 복도 2개, 나머지 3개
+                int want = stairRoom ? 1 : (room == TowerLayout.CenterRoom ? 2 : 3);
+                var cands = CabinetCandidates(floor, room, avoid).OrderBy(_ => rng.Next()).ToList();
+                var chosen = new List<CabinetSlot>();
+                foreach (var c in cands)
+                {
+                    if (chosen.Count >= want) break;
+                    // 서로 겹치지 않게
+                    if (chosen.Any(o => Vector3.Distance(o.pos, c.pos) < 1.4f)) continue;
+                    chosen.Add(c);
+                }
+
+                for (int s = 0; s < chosen.Count; s++)
                 {
                     // 간호사실의 첫 서랍장은 직원 출입카드가 든 금속 서랍장
                     bool metal = floor == TowerLayout.NurseStationFloor && room == TowerLayout.NurseStationRoom && s == 0;
-                    BuildContainer(root, floor, room, c, slots[s], metal);
+                    BuildContainer(root, floor, room, chosen[s].pos, chosen[s].rot, metal);
                 }
-
-                // 옷장 (숨는 곳): 계단방이 아닌 방 중 절반 정도
-                bool wardrobe = !stairRoom && ((room + floor) % 2 == 0);
-                if (wardrobe) BuildWardrobe(root, c);
             }
         }
 
@@ -437,11 +515,11 @@ namespace Escape.EditorTools
         const string CabinetPrefabPath = "Assets/Prefabs/Cabinet.prefab";
         static Material metalCabinetTint;
 
-        static Container BuildContainer(Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
+        static Container BuildContainer(Transform parent, int floor, int room, Vector3 position, Quaternion rotation, bool metal)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CabinetPrefabPath);
-            if (prefab != null) return BuildModelContainer(prefab, parent, floor, room, roomCenter, slot, metal);
-            return BuildPrimitiveContainer(parent, floor, room, roomCenter, slot, metal);
+            if (prefab != null) return BuildModelContainer(prefab, parent, floor, room, position, rotation, metal);
+            return BuildPrimitiveContainer(parent, floor, room, position, rotation, metal);
         }
 
         static Quaternion FaceRoomCenter(Vector3 position, Vector3 roomCenter)
@@ -455,13 +533,13 @@ namespace Escape.EditorTools
         }
 
         /// <summary>Varco 서랍장 모델(Body, Drawer, ItemAnchor)로 서랍장을 만든다. 방 중심을 향해 서랍이 열린다.</summary>
-        static Container BuildModelContainer(GameObject prefab, Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
+        static Container BuildModelContainer(GameObject prefab, Transform parent, int floor, int room, Vector3 position, Quaternion rotation, bool metal)
         {
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             go.name = metal ? "MetalCabinet" : "Cabinet";
             go.transform.SetParent(parent);
-            go.transform.position = roomCenter + new Vector3(slot.x, 0f, slot.y);
-            go.transform.rotation = FaceRoomCenter(go.transform.position, roomCenter);
+            go.transform.position = position;
+            go.transform.rotation = rotation;
 
             if (metal)
             {
@@ -491,12 +569,12 @@ namespace Escape.EditorTools
         /// <summary>
         /// 서랍장 하나: 몸통 + 밀려 나오는 서랍 + 물건이 놓이는 자리. (모델이 없을 때 쓰는 기본 도형 버전)
         /// </summary>
-        static Container BuildPrimitiveContainer(Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
+        static Container BuildPrimitiveContainer(Transform parent, int floor, int room, Vector3 position, Quaternion rotation, bool metal)
         {
             var root = new GameObject(metal ? "MetalCabinet" : "Cabinet").transform;
             root.SetParent(parent);
-            root.position = roomCenter + new Vector3(slot.x, 0f, slot.y);
-            root.rotation = FaceRoomCenter(root.position, roomCenter);
+            root.position = position;
+            root.rotation = rotation;
 
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = "Body";
@@ -528,12 +606,12 @@ namespace Escape.EditorTools
             EditorUtility.SetDirty(cont);
             return cont;
         }
-        static void BuildWardrobe(Transform parent, Vector3 roomCenter)
+        static void BuildWardrobe(Transform parent, Vector3 position)
         {
             // 숨는 곳: 철제 로커 (Varco 모델). 문이 방 안쪽(서쪽)을 향한다.
             var holder = new GameObject("Locker").transform;
             holder.SetParent(parent);
-            holder.position = roomCenter + new Vector3(WardrobeSlot.x, 0f, WardrobeSlot.y);
+            holder.position = position;
 
             var model = Escape.EditorTools.PropTools.Instantiate("SteelLocker", holder, 1.9f, 0f, yaw: -90f);
             if (model != null)
@@ -555,12 +633,12 @@ namespace Escape.EditorTools
 
             var hide = new GameObject("HidePoint").transform;
             hide.SetParent(holder);
-            hide.position = new Vector3(holder.position.x, roomCenter.y + 0.1f, holder.position.z);
+            hide.position = new Vector3(holder.position.x, position.y + 0.1f, holder.position.z);
             hide.rotation = Quaternion.Euler(0f, -90f, 0f);   // 방 안쪽(서쪽)을 본다
 
             var exit = new GameObject("ExitPoint").transform;
             exit.SetParent(holder);
-            exit.position = new Vector3(holder.position.x - 1.2f, roomCenter.y + 0.1f, holder.position.z);
+            exit.position = new Vector3(holder.position.x - 1.2f, position.y + 0.1f, holder.position.z);
 
             var spot = holder.gameObject.AddComponent<HidingSpot>();
             var so = new SerializedObject(spot);
@@ -599,32 +677,43 @@ namespace Escape.EditorTools
             }
         }
 
+        /// <summary>계단이 붙는 자리(월드 x, z). 서쪽 홀은 서쪽 벽, 동쪽 홀은 동쪽 벽에 위/아래 계단이 나란히 있다.</summary>
+        static Vector2 StairSlotXZ(int room, bool up)
+        {
+            Rect r = TowerLayout.RoomRect(room);
+            float x = room == TowerLayout.WestStairRoom ? r.xMin + 0.45f : r.xMax - 0.45f;
+            float z = r.center.y + (up ? 1.05f : -1.05f);
+            return new Vector2(x, z);
+        }
+
         static StairPortal MakePortal(Transform parent, int floor, int room, bool up)
         {
-            Vector3 c = TowerLayout.RoomCenter(floor, room);
-            Vector2 slot = up ? UpStairSlot : DownStairSlot;
+            float floorY = TowerLayout.FloorY(floor);
+            Vector2 slot = StairSlotXZ(room, up);
+            bool west = room == TowerLayout.WestStairRoom;
+            float inward = west ? 1f : -1f;   // 홀 안쪽 (x 방향)
             string label = up ? "Up" : "Down";
 
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = $"Stair{label}_{TowerLayout.ShortLabel(floor)}_{room}";
             go.transform.SetParent(parent);
-            go.transform.position = c + new Vector3(slot.x, 1.2f, slot.y);
-            go.transform.localScale = new Vector3(1.6f, 2.4f, 0.3f);
+            go.transform.position = new Vector3(slot.x, floorY + 1.2f, slot.y);
+            go.transform.localScale = new Vector3(0.3f, 2.4f, 1.4f);
             go.GetComponent<Renderer>().sharedMaterial = up ? stairUpMat : stairDownMat;
 
-            // 도착했을 때 서는 자리: 계단 앞 (방 안쪽, 남쪽을 향해)
+            // 도착했을 때 서는 자리: 계단 앞 (홀 안쪽을 본다)
             var exit = new GameObject("ArrivalPoint").transform;
             exit.SetParent(go.transform);
-            exit.position = new Vector3(go.transform.position.x, c.y + 0.1f, go.transform.position.z - 1.6f);
-            exit.rotation = Quaternion.Euler(0f, 180f, 0f);
+            exit.position = new Vector3(slot.x + inward * 1.7f, floorY + 0.1f, slot.y);
+            exit.rotation = Quaternion.Euler(0f, west ? 90f : 270f, 0f);
 
-            // 어둠 속에서 찾을 수 있게 은은한 빛 (올라가는 계단은 초록, 내려가는 계단은 붉은 기운)
+            // 가까이 가야 보이는 은은한 빛 (올라가는 계단은 초록, 내려가는 계단은 붉은 기운)
             var lg = new GameObject("Glow").AddComponent<Light>();
             lg.transform.SetParent(go.transform);
-            lg.transform.position = go.transform.position + new Vector3(0f, 0.4f, -0.8f);
+            lg.transform.position = go.transform.position + new Vector3(inward * 0.8f, -0.8f, 0f);
             lg.type = LightType.Point;
-            lg.range = 3.2f;
-            lg.intensity = 0.9f;
+            lg.range = 2.6f;
+            lg.intensity = 0.6f;
             lg.color = up ? new Color(0.45f, 1f, 0.55f) : new Color(1f, 0.35f, 0.3f);
 
             var portal = go.AddComponent<StairPortal>();
@@ -758,6 +847,7 @@ namespace Escape.EditorTools
         {
             int f = TowerLayout.GroundFloor;
             Vector3 c = TowerLayout.RoomCenter(f, TowerLayout.ExitRoom);
+            Rect exitRect = TowerLayout.RoomRect(TowerLayout.ExitRoom);
 
             var lightObj = new GameObject("ExitRoomLight");
             lightObj.transform.SetParent(parent);
@@ -773,7 +863,7 @@ namespace Escape.EditorTools
             var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
             box.name = "PowerBox";
             box.transform.SetParent(parent);
-            box.transform.position = c + new Vector3(3.7f, 1.5f, 1.8f);
+            box.transform.position = new Vector3(exitRect.xMax - 0.3f, c.y + 1.5f, c.z + 2.5f);
             box.transform.localScale = new Vector3(0.3f, 0.8f, 0.6f);
             box.GetComponent<Renderer>().sharedMaterial = boxMat;
 

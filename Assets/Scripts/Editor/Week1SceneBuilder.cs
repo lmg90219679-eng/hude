@@ -191,6 +191,7 @@ namespace Escape.EditorTools
             var player = new GameObject("Player");
             player.tag = "Player";
             player.transform.position = startPosition + Vector3.up * 0.1f;
+            player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);   // 시작할 때 복도 쪽(남쪽)을 본다
 
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.8f;
