@@ -31,7 +31,7 @@ namespace Escape.EditorTools
         const float WallThick = 0.3f;
         const float DoorWidth = 3f;
 
-        static Material floorMat, wallMat, chaserMat, woodMat, wardrobeMat, doorMat, lockedDoorMat, exitMat, boxMat, stairUpMat, stairDownMat;
+        static Material floorMat, wallMat, chaserMat, woodMat, wardrobeMat, doorMat, lockedDoorMat, exitMat, boxMat, stairUpMat, stairDownMat, drawerMat, metalMat, metalDrawerMat;
 
         // Build()는 TowerBuilder.cs에 있다 (5개 층 건물을 만든다).
         [MenuItem("Escape/Build Tower Scene")]
@@ -111,6 +111,9 @@ namespace Escape.EditorTools
             lockedDoorMat = GetOrCreateMat("LockedDoor", new Color(0.35f, 0.08f, 0.08f));
             stairUpMat = GetOrCreateMat("StairUp", new Color(0.25f, 0.45f, 0.3f));
             stairDownMat = GetOrCreateMat("StairDown", new Color(0.4f, 0.15f, 0.15f));
+            drawerMat = GetOrCreateMat("CabinetDrawer", new Color(0.46f, 0.3f, 0.18f));
+            metalMat = GetOrCreateMat("Metal", new Color(0.5f, 0.52f, 0.56f));
+            metalDrawerMat = GetOrCreateMat("MetalDrawer", new Color(0.62f, 0.65f, 0.7f));
         }
 
         static Material GetOrCreateMat(string name, Color color)

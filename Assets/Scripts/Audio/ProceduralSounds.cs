@@ -72,6 +72,25 @@ namespace Escape.Audio
             return Make("Scream", data);
         }
 
+        /// <summary>금속 서랍이 쨍그랑 울리는 소리. 어긋난 배음이 길게 울린다.</summary>
+        public static AudioClip Metal()
+        {
+            float len = 1.6f;
+            var data = new float[(int)(Rate * len)];
+            var rng = new System.Random(21);
+            float[] freqs = { 420f, 673f, 1130f, 1587f, 2310f, 3170f };
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float s = 0f;
+                for (int k = 0; k < freqs.Length; k++)
+                    s += Mathf.Sin(2f * Mathf.PI * freqs[k] * t) * Mathf.Exp(-t * (2.2f + k * 1.1f)) / (1f + k * 0.4f);
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0) * Mathf.Exp(-t * 40f);
+                data[i] = Mathf.Clamp((s * 0.55f + noise * 0.6f), -1f, 1f);
+            }
+            return Make("Metal", data);
+        }
+
         /// <summary>손전등 스위치의 짧은 딸깍 소리.</summary>
         public static AudioClip Click()
         {

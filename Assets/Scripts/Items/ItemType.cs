@@ -16,6 +16,7 @@ namespace Escape.Items
         Piece3,           // 2층
         Piece4,           // 3층
         MasterKey,        // 조각 5개를 합친 탈출 열쇠
+        SecurityCard,     // 간호사실의 직원 출입카드 (엘리베이터 잠금 해제)
     }
 
     public static class ItemInfo
@@ -38,6 +39,7 @@ namespace Escape.Items
                 case ItemType.Piece3: return "탈출 열쇠 조각 (2층)";
                 case ItemType.Piece4: return "탈출 열쇠 조각 (3층)";
                 case ItemType.MasterKey: return "탈출 열쇠";
+                case ItemType.SecurityCard: return "직원 출입카드";
                 default: return t.ToString();
             }
         }

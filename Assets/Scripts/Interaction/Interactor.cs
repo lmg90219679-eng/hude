@@ -66,9 +66,17 @@ namespace Escape.Interaction
 
         IInteractable Find()
         {
+            // 시선은 플레이어 몸 안에서 출발하므로, 자기 자신의 충돌체는 건너뛰고 가장 가까운 물체를 본다.
+            // (벽 같은 물체가 먼저 맞으면 그 너머는 볼 수 없다)
             var ray = new Ray(cameraTransform.position, cameraTransform.forward);
-            if (!Physics.Raycast(ray, out RaycastHit hit, reach, ~0, QueryTriggerInteraction.Collide)) return null;
-            return hit.collider.GetComponentInParent<IInteractable>();
+            var hits = Physics.RaycastAll(ray, reach, ~0, QueryTriggerInteraction.Collide);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var h in hits)
+            {
+                if (h.collider.transform.IsChildOf(transform)) continue;
+                return h.collider.GetComponentInParent<IInteractable>();
+            }
+            return null;
         }
 
         void ThrowSmoke()

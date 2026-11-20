@@ -38,6 +38,10 @@ namespace Escape.Items
             // 시작부터 갈 수 있는 방: 서쪽 계단방, 가운데 방, 동쪽 계단방
             var reach = new HashSet<int> { TowerLayout.WestStairRoom, TowerLayout.CenterRoom, TowerLayout.EastStairRoom };
 
+            // 직원 출입카드: 간호사실의 금속 서랍에 고정 (열면 큰 소음이 난다)
+            var metal = free.FirstOrDefault(c => c.metalDrawer);
+            if (metal != null) Place(metal, ItemDrop.Item(ItemType.SecurityCard), free);
+
             // 탈출 열쇠 조각: 마지막에 열리는 방의 컨테이너에 먼저 예약
             if (doors.Count > 0)
             {

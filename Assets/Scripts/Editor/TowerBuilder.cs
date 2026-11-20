@@ -97,6 +97,9 @@ namespace Escape.EditorTools
             BuildStairs(map.transform);
             BuildPowerBoxOnGround(map.transform);
 
+            var itemSettings = new GameObject("ItemVisualSettings").AddComponent<ItemVisualSettings>();
+            itemSettings.baseMaterial = floorMat;
+            EditorUtility.SetDirty(itemSettings);
             new GameObject("TowerSpawner").AddComponent<TowerSpawner>();
             new GameObject("MapTracker").AddComponent<MapTracker>();
             new GameObject("ChaserDirector").AddComponent<ChaserDirector>();
@@ -338,24 +341,73 @@ namespace Escape.EditorTools
                 bool stairRoom = IsStairRoom(room);
                 var slots = stairRoom ? StairRoomContainerSlots : ContainerSlots;
 
-                foreach (var o in slots)
+                for (int s = 0; s < slots.Length; s++)
                 {
-                    var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    box.name = "Container";
-                    box.transform.SetParent(root);
-                    box.transform.position = c + new Vector3(o.x, 0.45f, o.y);
-                    box.transform.localScale = new Vector3(1.0f, 0.9f, 0.6f);
-                    box.GetComponent<Renderer>().sharedMaterial = woodMat;
-                    var cont = box.AddComponent<Container>();
-                    cont.floor = floor;
-                    cont.room = room;
-                    EditorUtility.SetDirty(cont);
+                    // 간호사실의 첫 서랍장은 직원 출입카드가 든 금속 서랍장
+                    bool metal = floor == TowerLayout.NurseStationFloor && room == TowerLayout.NurseStationRoom && s == 0;
+                    BuildContainer(root, floor, room, c, slots[s], metal);
                 }
 
                 // 옷장 (숨는 곳): 계단방이 아닌 방 중 절반 정도
                 bool wardrobe = !stairRoom && ((room + floor) % 2 == 0);
                 if (wardrobe) BuildWardrobe(root, c);
             }
+        }
+
+        /// <summary>
+        /// 서랍장 하나: 몸통 + 밀려 나오는 서랍 + 물건이 놓이는 자리. 방 중심을 향해 서랍이 열린다.
+        /// 지금은 기본 도형이고, 나중에 Varco 모델로 바꿀 때도 이 구조(Body, Drawer, ItemAnchor)를 유지한다.
+        /// </summary>
+        static Container BuildContainer(Transform parent, int floor, int room, Vector3 roomCenter, Vector2 slot, bool metal)
+        {
+            var root = new GameObject(metal ? "MetalCabinet" : "Cabinet").transform;
+            root.SetParent(parent);
+            root.position = roomCenter + new Vector3(slot.x, 0f, slot.y);
+
+            Vector3 toCenter = roomCenter - root.position;
+            toCenter.y = 0f;
+            Vector3 face = Mathf.Abs(toCenter.x) > Mathf.Abs(toCenter.z)
+                ? new Vector3(Mathf.Sign(toCenter.x), 0f, 0f)
+                : new Vector3(0f, 0f, Mathf.Sign(toCenter.z));
+            root.rotation = Quaternion.LookRotation(face);
+
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.name = "Body";
+            body.transform.SetParent(root, false);
+            body.transform.localPosition = new Vector3(0f, 0.45f, 0f);
+            body.transform.localScale = new Vector3(1.0f, 0.9f, 0.6f);
+            body.GetComponent<Renderer>().sharedMaterial = metal ? metalMat : woodMat;
+
+            var drawer = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            drawer.name = "Drawer";
+            drawer.transform.SetParent(root, false);
+            drawer.transform.localPosition = new Vector3(0f, 0.62f, 0.06f);
+            drawer.transform.localScale = new Vector3(0.86f, 0.25f, 0.5f);
+            drawer.GetComponent<Renderer>().sharedMaterial = metal ? metalDrawerMat : drawerMat;
+            Object.DestroyImmediate(drawer.GetComponent<Collider>());
+
+            var handle = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            handle.name = "Handle";
+            handle.transform.SetParent(drawer.transform, false);
+            handle.transform.localPosition = new Vector3(0f, 0f, 0.56f);
+            handle.transform.localScale = new Vector3(0.22f / 0.86f, 0.04f / 0.25f, 0.04f / 0.5f);
+            handle.GetComponent<Renderer>().sharedMaterial = metalMat;
+            Object.DestroyImmediate(handle.GetComponent<Collider>());
+
+            var anchor = new GameObject("ItemAnchor").transform;
+            anchor.SetParent(root, false);
+            anchor.localPosition = new Vector3(0f, 0.76f, 0.06f);
+
+            var cont = root.gameObject.AddComponent<Container>();
+            var so = new SerializedObject(cont);
+            so.FindProperty("drawer").objectReferenceValue = drawer.transform;
+            so.FindProperty("itemAnchor").objectReferenceValue = anchor;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            cont.floor = floor;
+            cont.room = room;
+            cont.metalDrawer = metal;
+            EditorUtility.SetDirty(cont);
+            return cont;
         }
 
         static void BuildWardrobe(Transform parent, Vector3 roomCenter)

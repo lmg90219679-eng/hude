@@ -86,8 +86,45 @@ namespace Escape.Enemy
             }
         }
 
-        void OnEnable() => NoiseSystem.OnNoise += OnNoiseHeard;
-        void OnDisable() => NoiseSystem.OnNoise -= OnNoiseHeard;
+        /// <summary>지금 켜져 있는 추적자들 (경보를 보낼 때 쓴다).</summary>
+        public static readonly System.Collections.Generic.List<ChaserAI> Active = new System.Collections.Generic.List<ChaserAI>();
+
+        void OnEnable()
+        {
+            NoiseSystem.OnNoise += OnNoiseHeard;
+            Active.Add(this);
+        }
+
+        void OnDisable()
+        {
+            NoiseSystem.OnNoise -= OnNoiseHeard;
+            Active.Remove(this);
+        }
+
+        /// <summary>
+        /// 큰 소리가 난 자리로 정해진 시간(arriveSeconds) 안에 도착하도록 달려간다.
+        /// 거리가 멀면 그만큼 빨리 움직이고, 너무 멀면 최대 속도로 간다.
+        /// </summary>
+        public void Alert(Vector3 position, float arriveSeconds)
+        {
+            if (Current == State.Chase) return;
+            if (Mathf.Abs(position.y - transform.position.y) > 2.5f) return;   // 다른 층은 못 듣는다
+            if (agent == null || !agent.isOnNavMesh) return;
+
+            Vector3 target = SnapToNavMesh(position);
+            float length = Vector3.Distance(transform.position, target);
+            var path = new NavMeshPath();
+            if (agent.CalculatePath(target, path) && path.corners.Length > 1)
+            {
+                length = 0f;
+                for (int i = 1; i < path.corners.Length; i++) length += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+            }
+
+            lastKnownPosition = position;
+            EnterInvestigate(position);
+            // 가까워도 정해진 시간에 걸쳐 천천히 다가온다 (그 사이에 도망치거나 숨을 수 있다)
+            agent.speed = Mathf.Clamp(length / Mathf.Max(1f, arriveSeconds), 0.4f, 6.5f);
+        }
 
         void Start()
         {
@@ -98,6 +135,14 @@ namespace Escape.Enemy
         void Update()
         {
             if (player == null) return;
+
+            // 판 시작 직후(안전 시간)에는 가만히 서 있는다: 다가오지도 않고 알아채지도 못한다
+            if (Time.time < GraceUntil)
+            {
+                if (agent.isOnNavMesh) agent.isStopped = true;
+                return;
+            }
+            if (agent.isOnNavMesh && agent.isStopped) agent.isStopped = false;
 
             bool seen = CanSeePlayer();
 

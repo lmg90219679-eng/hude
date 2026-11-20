@@ -21,6 +21,8 @@ namespace Escape.Core
         public const int EastStairRoom = 5;        // (2,1)
         public const int ExitRoom = 1;             // (1,0) 1층 정문이 있는 방
         public const int StartRoom = 3;            // 1층 서쪽 계단방에서 시작
+        public const int NurseStationFloor = 3;    // 2층
+        public const int NurseStationRoom = 6;     // (0,2) 간호사실: 직원 출입카드가 든 금속 서랍이 있다
 
         static readonly string[] Labels = { "지하2", "지하1", "1층", "2층", "3층" };
         static readonly string[] ShortLabels = { "B2", "B1", "1F", "2F", "3F" };

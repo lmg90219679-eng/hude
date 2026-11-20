@@ -17,7 +17,7 @@ namespace Escape.Audio
         [SerializeField] float heartbeatMaxDistance = 18f;
 
         AudioSource ambient, heart, steps, sfx, sfxLow, sfxHigh;
-        AudioClip footstep, scream, sting, click;
+        AudioClip footstep, scream, sting, click, metal;
 
         void Awake()
         {
@@ -95,6 +95,12 @@ namespace Escape.Audio
         public void PlayClick()
         {
             if (click != null) sfx.PlayOneShot(click, 0.7f);
+        }
+
+        public void PlayMetal()
+        {
+            if (metal == null) metal = ProceduralSounds.Metal();
+            sfx.PlayOneShot(metal, 1f);
         }
 
         void OnStep(bool crouching, bool sprinting)
