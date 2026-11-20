@@ -34,6 +34,47 @@ namespace Escape.Core
             public bool stair;       // 계단 홀의 비상구
         }
 
+        // ---------- 평면 잠금 ----------
+        // 이 평면(층 구조, 방 개수 101개/층, 통로)은 확정되었다. 생성 코드를 건드려 평면이 바뀌면 씬 빌드가 막힌다.
+        public const int LockedRealRooms = 101;
+        public const int LockedZones = 136;
+        public const int LockedEdges = 302;
+        public const int LockedSignature = -1741114157;   // 확정된 평면의 서명
+
+        /// <summary>방 영역과 통로를 해시한 값. 평면이 한 칸이라도 바뀌면 달라진다.</summary>
+        public static int ComputeSignature()
+        {
+            unchecked
+            {
+                int h = 17;
+                for (int i = 0; i < rects.Count; i++)
+                {
+                    Rect r = rects[i];
+                    h = h * 31 + Mathf.RoundToInt(r.xMin * 10f); h = h * 31 + Mathf.RoundToInt(r.yMin * 10f);
+                    h = h * 31 + Mathf.RoundToInt(r.width * 10f); h = h * 31 + Mathf.RoundToInt(r.height * 10f);
+                    h = h * 31 + (int)kinds[i];
+                }
+                for (int i = 0; i < edges.Count; i++)
+                {
+                    var e = edges[i];
+                    h = h * 31 + e.a; h = h * 31 + e.b; h = h * 31 + (e.vertical ? 1 : 0) + (e.open ? 2 : 0) + (e.stair ? 4 : 0);
+                    h = h * 31 + Mathf.RoundToInt(e.x * 10f); h = h * 31 + Mathf.RoundToInt(e.z * 10f);
+                }
+                return h;
+            }
+        }
+
+        /// <summary>잠긴 평면과 같은가. 다르면 이유를 돌려준다.</summary>
+        public static bool IsLayoutLocked(out string reason)
+        {
+            reason = null;
+            if (RealRoomsPerFloor != LockedRealRooms) reason = $"방 수 {RealRoomsPerFloor} (확정 {LockedRealRooms})";
+            else if (RoomsPerFloor != LockedZones) reason = $"구역 수 {RoomsPerFloor} (확정 {LockedZones})";
+            else if (edges.Count != LockedEdges) reason = $"통로 수 {edges.Count} (확정 {LockedEdges})";
+            else if (LockedSignature != 0 && ComputeSignature() != LockedSignature) reason = $"평면 서명 {ComputeSignature()} (확정 {LockedSignature})";
+            return reason == null;
+        }
+
         // ---------- 생성된 평면 ----------
         static readonly List<Rect> rects = new List<Rect>();
         static readonly List<Kind> kinds = new List<Kind>();

@@ -84,6 +84,13 @@ namespace Escape.EditorTools
             decayCache.Clear();
             stairStepMat = stairWallMat = stairRailMat = null;
 
+            // 확정된 평면(층 구조, 방 개수)이 바뀌었으면 빌드하지 않는다
+            if (!TowerLayout.IsLayoutLocked(out string lockReason))
+            {
+                Debug.LogError($"[TowerBuilder] 확정된 평면과 다르다: {lockReason}. TowerLayout의 평면 생성 코드를 되돌리거나, 평면을 바꾸기로 했다면 Locked 상수를 갱신한다.");
+                return;
+            }
+
             SetupChaserImport();
             BuildMenuScene();
 
