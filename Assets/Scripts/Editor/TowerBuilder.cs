@@ -67,6 +67,7 @@ namespace Escape.EditorTools
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             EnsureMaterials();
+            EnsureHospitalMaterials();
             SetupAmbient();
 
             var rng = new System.Random(20260101);   // 건물 구조는 고정 (열쇠와 아이템 위치만 매 판 무작위)
@@ -97,6 +98,7 @@ namespace Escape.EditorTools
             // 문, 가구, 계단은 NavMesh를 굽고 나서 만든다 (닫힌 문이 길을 막지 않게)
             BuildDoors(map.transform);
             for (int f = 0; f < TowerLayout.Floors; f++) BuildFurniture(map.transform, f);
+            BuildHospitalRooms(map.transform);
             BuildStairs(map.transform);
             BuildPowerBoxOnGround(map.transform);
             BuildElectricalRoomProps(map.transform);

@@ -179,7 +179,9 @@ namespace Escape.UI
             // 바탕과 테두리
             Fill(new Rect(x0 - 4, y0 - 28, MapSize + 8, MapSize + 32), new Color(0f, 0f, 0f, 0.7f));
             Fill(new Rect(x0, y0, MapSize, MapSize), new Color(0.04f, 0.04f, 0.05f, 0.9f));
-            GUI.Label(new Rect(x0, y0 - 26, MapSize, 24), TowerLayout.Label(floor), new GUIStyle(small) { fontSize = 16, alignment = TextAnchor.MiddleLeft });
+            string roomName = map.CurrentRoom >= 0 ? RoomNames.Get(floor, map.CurrentRoom) : "";
+            string title = TowerLayout.Label(floor) + (roomName.Length > 0 ? "  ·  " + roomName : "");
+            GUI.Label(new Rect(x0, y0 - 26, MapSize + 120, 24), title, new GUIStyle(small) { fontSize = 16, alignment = TextAnchor.MiddleLeft });
 
             // 방 (북쪽이 위: z가 클수록 위)
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)

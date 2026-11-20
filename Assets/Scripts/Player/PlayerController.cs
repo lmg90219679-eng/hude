@@ -63,8 +63,14 @@ namespace Escape.Player
             verticalVelocity = 0f;
         }
 
-        public void EnterHiding(Vector3 hidePosition, Vector3 exitPosition, Quaternion facing)
+        public void EnterHiding(Vector3 hidePosition, Vector3 exitPosition, Quaternion facing, float eyeHeight = -1f)
         {
+            if (eyeHeight > 0f && cameraRoot != null)
+            {
+                var lp = cameraRoot.localPosition;
+                lp.y = eyeHeight;
+                cameraRoot.localPosition = lp;
+            }
             hideExitPosition = exitPosition;
             IsHidden = true;
             IsMoving = false;

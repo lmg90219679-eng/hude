@@ -163,7 +163,7 @@ namespace Escape.EditorTools
             wall.transform.localScale = alongX
                 ? new Vector3(length + WallThick, WallHeight, WallThick)
                 : new Vector3(WallThick, WallHeight, length + WallThick);
-            wall.GetComponent<Renderer>().sharedMaterial = wallMat;
+            wall.GetComponent<Renderer>().sharedMaterial = WallMaterialFor(length);
         }
 
         static Vector3 CellCenter(int i, int j) =>

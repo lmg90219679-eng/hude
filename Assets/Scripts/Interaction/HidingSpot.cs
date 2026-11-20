@@ -7,14 +7,15 @@ namespace Escape.Interaction
     {
         [SerializeField] Transform hidePoint;
         [SerializeField] Transform exitPoint;
+        [SerializeField] float eyeHeight = -1f;      // 침대 뒤처럼 몸을 낮춰 숨는 곳은 눈높이를 낮춘다 (-1이면 그대로)
 
-        public string GetPrompt(Interactor who) => "E: 숨는다";
+        public string GetPrompt(Interactor who) => eyeHeight > 0f ? "E: 침대 뒤에 숨는다" : "E: 숨는다";
 
         public void Interact(Interactor who)
         {
             Transform hp = hidePoint != null ? hidePoint : transform;
             Vector3 exit = exitPoint != null ? exitPoint.position : transform.position + transform.forward * 1.5f;
-            who.Player.EnterHiding(hp.position, exit, hp.rotation);
+            who.Player.EnterHiding(hp.position, exit, hp.rotation, eyeHeight);
         }
     }
 }
