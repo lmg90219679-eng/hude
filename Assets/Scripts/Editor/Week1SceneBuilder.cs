@@ -132,7 +132,7 @@ namespace Escape.EditorTools
         static void SetupAmbient()
         {
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.004f, 0.004f, 0.006f);
+            RenderSettings.ambientLight = new Color(0.014f, 0.015f, 0.02f);
             RenderSettings.fog = true;
             RenderSettings.fogColor = Color.black;
             RenderSettings.fogMode = FogMode.ExponentialSquared;

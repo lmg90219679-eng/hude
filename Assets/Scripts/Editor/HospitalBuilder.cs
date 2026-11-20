@@ -158,6 +158,8 @@ namespace Escape.EditorTools
 
         static Material WallMaterialFor(float length)
         {
+            var decay = DecayWallMaterial(length);
+            if (decay != null) return decay;
             if (wallShortMat == null || wallLongMat == null) return wallMat;
             return length <= 3.5f ? wallShortMat : (length <= 6.5f ? wallMat : wallLongMat);
         }

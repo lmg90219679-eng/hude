@@ -89,6 +89,9 @@ namespace Escape.EditorTools
             cachedSkin = null;
             cachedController = null;
             doorRequests.Clear();
+            debrisSpots.Clear();
+            decayCache.Clear();
+            stairStepMat = stairWallMat = stairRailMat = null;
 
             SetupChaserImport();
             BuildMenuScene();
@@ -105,7 +108,9 @@ namespace Escape.EditorTools
             for (int f = 0; f < TowerLayout.Floors; f++)
             {
                 plans[f] = MakePlan(rng);
+                wallFloor = f;
                 BuildFloorGeometry(map.transform, f, plans[f]);
+                BuildDecayShell(map.transform, f);
             }
 
             BuildElectricalRoomGeometry(map.transform);
@@ -128,6 +133,7 @@ namespace Escape.EditorTools
             BuildDoors(map.transform);
             for (int f = 0; f < TowerLayout.Floors; f++) BuildFurniture(map.transform, f);
             BuildHospitalRooms(map.transform);
+            BuildDecayProps(map.transform);
             BuildStairs(map.transform);
             BuildPowerBoxOnGround(map.transform);
             BuildElectricalRoomProps(map.transform);
@@ -223,6 +229,7 @@ namespace Escape.EditorTools
             float mid = (a + b) * 0.5f;
             Vector3 center = vertical ? new Vector3(line, y, mid) : new Vector3(mid, y, line);
             MakeWall(root, center, vertical ? Vector3.forward : Vector3.right, b - a);
+            AddWallTrim(root, y, vertical, line, a, b);
         }
 
         static void BuildFloorGeometry(Transform parent, int floor, FloorPlan plan)
@@ -533,6 +540,17 @@ namespace Escape.EditorTools
                     // 서로 겹치지 않게
                     if (chosen.Any(o => Vector3.Distance(o.pos, c.pos) < 1.4f)) continue;
                     chosen.Add(c);
+                }
+
+                // 잔해 더미 자리: 서랍장과 겹치지 않는 벽 자리 (복도 1개, 방 1~2개)
+                int pileWant = stairRoom ? 0 : (room == TowerLayout.CenterRoom ? 1 : 1 + rng.Next(2));
+                foreach (var c in cands)
+                {
+                    if (pileWant <= 0) break;
+                    if (chosen.Any(o => Vector3.Distance(o.pos, c.pos) < 2.0f)) continue;
+                    if (debrisSpots.Any(d => d.floor == floor && Vector3.Distance(d.pos, c.pos) < 2.2f)) continue;
+                    debrisSpots.Add(new DebrisSpot { floor = floor, pos = c.pos, yaw = rng.Next(360) });
+                    pileWant--;
                 }
 
                 for (int s = 0; s < chosen.Count; s++)
