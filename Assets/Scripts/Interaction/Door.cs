@@ -25,6 +25,8 @@ namespace Escape.Interaction
         public bool requiresPower;         // 발전기(차단기 3개)가 복구돼야 열린다 (엘리베이터 홀의 숨겨진 문)
         public bool secret;                // 숨겨진 문: 벽처럼 보이고 지도에 나오지 않는다
 
+        [SerializeField] GameObject leak;   // 숨겨진 문 아래로 새어 나오는 빛 (찾는 단서)
+
         bool open;
         bool unlocked;
         float angle;
@@ -84,6 +86,13 @@ namespace Escape.Interaction
 
         void Update()
         {
+            // 단서: 문이 닫혀 있고, (전력이 필요한 문이면) 발전기가 복구됐을 때만 빛이 새어 나온다
+            if (leak != null)
+            {
+                bool powered = !requiresPower || (PowerGrid.Instance != null && PowerGrid.Instance.Complete);
+                leak.SetActive(!open && powered);
+            }
+
             float target = open ? openAngle : 0f;
             angle = Mathf.MoveTowards(angle, target, speed * 60f * Time.deltaTime);
             hinge.localRotation = Quaternion.Euler(0f, angle, 0f);

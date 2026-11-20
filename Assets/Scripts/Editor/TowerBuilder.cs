@@ -351,10 +351,54 @@ namespace Escape.EditorTools
                 door.roomB = req.roomB;
                 door.lockKeyId = req.keyId;
                 door.treeOrder = req.treeOrder;
+                if (req.kind == DoorKind.Secret) AttachLightLeak(root.transform, door, req, alongX);
                 door.secret = req.kind == DoorKind.Secret;
                 door.requiresPower = req.requiresPower;
                 EditorUtility.SetDirty(door);
             }
+        }
+
+        // ---------- 숨겨진 문의 빛 단서 ----------
+
+        static Material leakRedMat, leakWarmMat;
+
+        static Material LeakMaterial(bool warm)
+        {
+            if (warm ? leakWarmMat != null : leakRedMat != null) return warm ? leakWarmMat : leakRedMat;
+            string name = warm ? "LightLeakWarm" : "LightLeakRed";
+            string path = $"{MatDir}/{name}.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            Color c = warm ? new Color(1f, 0.72f, 0.38f) : new Color(0.95f, 0.18f, 0.1f);
+            mat.SetColor("_BaseColor", c * 0.4f);
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", c * 0.5f);   // 세기가 1을 넘으면 후처리에서 색이 틀어진다
+            EditorUtility.SetDirty(mat);
+            if (warm) leakWarmMat = mat; else leakRedMat = mat;
+            return mat;
+        }
+
+        /// <summary>문 바닥 틈으로 빛이 새어 나오는 가는 띠. 전기실 문은 붉게, 엘리베이터 승강장 문은 따뜻하게.</summary>
+        static void AttachLightLeak(Transform doorRoot, Door door, DoorRequest req, bool alongX)
+        {
+            bool warm = req.requiresPower;
+            var strip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            strip.name = "LightLeak";
+            strip.transform.SetParent(doorRoot, true);
+            strip.transform.position = req.center + Vector3.up * 0.02f;
+            strip.transform.localScale = alongX
+                ? new Vector3(DoorWidth - 0.15f, 0.03f, 0.2f)
+                : new Vector3(0.2f, 0.03f, DoorWidth - 0.15f);
+            strip.GetComponent<Renderer>().sharedMaterial = LeakMaterial(warm);
+            Object.DestroyImmediate(strip.GetComponent<Collider>());
+
+            var so = new SerializedObject(door);
+            so.FindProperty("leak").objectReferenceValue = strip;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ---------- 방 안 가구 ----------
