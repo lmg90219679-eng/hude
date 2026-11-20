@@ -84,25 +84,9 @@ namespace Escape.EditorTools
             var root = new GameObject($"Decay_{TowerLayout.ShortLabel(floor)}").transform;
             root.SetParent(parent);
 
-            // 방 바닥: 지하는 깨진 타일, 지상은 이끼 낀 방과 잔해가 흩어진 방을 섞는다
-            var moss = DecayMat("FloorMoss", "FloorMoss.png", Vector2.one, 0.35f, 0.9f);
+            // 방마다 다른 바닥(질감, 색조)과 천장, 계단 홀 승강장
+            BuildRoomSurfaces(root, floor);
             var debris = DecayMat("FloorDebris", "FloorDebris.png", Vector2.one, 0.2f);
-            var tileOld = DecayMat("FloorTileOld", "FloorTileOld.png", Vector2.one, 0.3f);
-            for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
-            {
-                if ((room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) && HallHasStairs(floor, room)) continue;
-                Material m;
-                float tile = 4f;
-                if (floor <= 1) { m = tileOld; tile = 3f; }
-                else if (room == TowerLayout.CenterRoom) m = debris;
-                else m = ((room + floor) % 2 == 0) ? moss : debris;
-                if (m == null) continue;
-
-                Rect r = TowerLayout.RoomRect(room);
-                var inner = new Rect(r.xMin + 0.15f, r.yMin + 0.15f, r.width - 0.3f, r.height - 0.3f);
-                FlatQuad(root, $"Floor_{room}", inner, y + 0.012f, true, tile, m);
-            }
-            // 계단 홀 승강장
             if (debris != null)
             {
                 foreach (bool west in new[] { true, false })
@@ -111,24 +95,6 @@ namespace Escape.EditorTools
                     if (!HallHasStairs(floor, hr)) continue;
                     FlatQuad(root, west ? "Landing_W" : "Landing_E", LandingRect(HallOf(west)), y + 0.012f, true, 4f, debris);
                 }
-            }
-
-            // 천장: 위층 바닥판의 계단 구멍은 비워 둔다
-            var ceil = DecayMat("CeilingDecay", "CeilingDecay.png", Vector2.one, 0.1f, 0.8f);
-            if (ceil != null)
-            {
-                var holes = floor < TowerLayout.Floors - 1 ? SlabHoles(floor + 1) : new List<Rect>();
-                var xs = new SortedSet<float> { 0f, TowerLayout.SpanX };
-                var zs = new SortedSet<float> { 0f, TowerLayout.SpanZ };
-                foreach (var h in holes) { xs.Add(h.xMin); xs.Add(h.xMax); zs.Add(h.yMin); zs.Add(h.yMax); }
-                var xl = xs.ToList(); var zl = zs.ToList();
-                for (int i = 0; i < xl.Count - 1; i++)
-                    for (int j = 0; j < zl.Count - 1; j++)
-                    {
-                        var c = new Vector2((xl[i] + xl[i + 1]) * 0.5f, (zl[j] + zl[j + 1]) * 0.5f);
-                        if (holes.Any(h => h.Contains(c))) continue;
-                        FlatQuad(root, "Ceiling", Rect.MinMaxRect(xl[i], zl[j], xl[i + 1], zl[j + 1]), y + 2.97f, false, 4f, ceil);
-                    }
             }
 
             // 노출된 배관: 복도 천장을 따라 길게, 방마다 한 가닥씩 (무작위)
@@ -194,17 +160,20 @@ namespace Escape.EditorTools
 
         static bool HasProp(string name) => System.IO.File.Exists($"{PropTools.PropsDir}/{name}/{name}.fbx");
 
+        /// <summary>충돌체를 달고, NavMesh를 구울 때 이 물체 자리를 걸을 수 없는 구역으로 표시한다 (추적자가 비켜 간다).</summary>
         static void AddNavObstacle(GameObject holder, Bounds b)
         {
             var col = holder.AddComponent<BoxCollider>();
             col.center = holder.transform.InverseTransformPoint(b.center);
             col.size = b.size;
-            var ob = holder.AddComponent<NavMeshObstacle>();
-            ob.shape = NavMeshObstacleShape.Box;
-            ob.center = col.center;
-            ob.size = b.size;
-            ob.carving = true;
-            ob.carveOnlyStationary = true;
+            MarkNotWalkable(holder);
+        }
+
+        static void MarkNotWalkable(GameObject go)
+        {
+            var mod = go.AddComponent<Unity.AI.Navigation.NavMeshModifier>();
+            mod.overrideArea = true;
+            mod.area = 1;   // Not Walkable
         }
 
         static void BuildDecayProps(Transform parent)
@@ -312,6 +281,7 @@ namespace Escape.EditorTools
                 float y = TowerLayout.FloorY(f);
                 foreach (var s in spots)
                 {
+                    if (!RoomThemes.Get(f, s.room).windowed) continue;
                     Vector3 p; Quaternion rot;
                     const float inset = 0.17f;
                     switch (s.wall)

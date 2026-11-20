@@ -40,10 +40,10 @@ namespace Escape.EditorTools
             public float laneDownZ => (z0 + zc - LaneGap) * 0.5f;    // 내려가는 줄 중심 (남쪽)
         }
 
-        // 서쪽 홀: 남쪽 복도의 서쪽 끝 (x 0~6, z 10~14) / 동쪽 홀: 북쪽 복도의 동쪽 끝 (x 42~48, z 22~26)
+        // 서쪽 홀: 남쪽 첫째 복도의 서쪽 끝 (x 0~6, z 9~13) / 동쪽 홀: 북쪽 다섯째 복도의 동쪽 끝 (x 94~100, z 61~65)
         static Hall HallOf(bool west) =>
-            west ? new Hall { west = true, xl = 4.35f, xw = 0.15f, d = -1f, zc = 12f }
-                 : new Hall { west = false, xl = TowerLayout.SpanX - 4.35f, xw = TowerLayout.SpanX - 0.15f, d = 1f, zc = 24f };
+            west ? new Hall { west = true, xl = 4.35f, xw = 0.15f, d = -1f, zc = 11f }
+                 : new Hall { west = false, xl = TowerLayout.SpanX - 4.35f, xw = TowerLayout.SpanX - 0.15f, d = 1f, zc = 63f };
 
         /// <summary>승강장 바닥 영역 (계단 줄 바로 앞 1.5m)</summary>
         static Rect LandingRect(Hall h) => new Rect(h.d < 0f ? h.xl : h.xl - 1.5f, h.z0, 1.5f, h.z1 - h.z0);

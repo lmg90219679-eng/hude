@@ -27,6 +27,16 @@ namespace Escape.EditorTools
         {
             Rect r = TowerLayout.RoomRect(room);
             float hx = r.width * 0.5f, hz = r.height * 0.5f;
+
+            // 좁은 방(폭 7.5m 미만): 양쪽 긴 벽을 따라 세 자리씩 (W0..W2 서쪽 벽, E0..E2 동쪽 벽). 소품은 방 안쪽을 본다.
+            if (char.IsDigit(name[1]))
+            {
+                bool west = name[0] == 'W';
+                int idx = name[1] - '0';
+                float z = new[] { -hz + 1.8f, 0f, hz - 1.8f }[Mathf.Clamp(idx, 0, 2)];
+                return new AnchorSpot { pos = new Vector2((west ? -1f : 1f) * (hx - 1.0f), z), faceYaw = west ? 90f : 270f };
+            }
+
             bool north = name[0] == 'N', east = name[1] == 'E';
             float sx = east ? 1f : -1f, sz = north ? 1f : -1f;
             if (name[1] == 'M')   // 북쪽/남쪽 벽 가운데: 벽에 붙어 방 안쪽을 본다
@@ -36,8 +46,8 @@ namespace Escape.EditorTools
                 return new AnchorSpot { pos = new Vector2(sx * hx * 0.5f, sz * (hz - 0.75f)), faceYaw = north ? 180f : 0f };
 
             float x = sx * (hx - (north ? 1.6f : 2.1f));
-            float z = sz * (hz - (hz >= 4.5f ? 2.5f : 2.2f));
-            return new AnchorSpot { pos = new Vector2(x, z), faceYaw = east ? 270f : 90f };
+            float zz = sz * (hz - (hz >= 4.5f ? 2.5f : 2.2f));
+            return new AnchorSpot { pos = new Vector2(x, zz), faceYaw = east ? 270f : 90f };
         }
 
         /// <summary>계단 홀에는 소품을 놓지 않는다.</summary>
@@ -66,46 +76,54 @@ namespace Escape.EditorTools
             { "ExamTable",     new PropSpec(0.85f, 1.9f) },
             { "FoldingScreen", new PropSpec(1.6f,  1.5f) },
             { "MetalShelf",    new PropSpec(2.0f,  1.2f) },
+            { "OperatingTable", new PropSpec(0.95f, 2.0f) },
+            { "SurgicalLamp",  new PropSpec(2.0f,  0.9f) },
+            { "Gurney",        new PropSpec(0.95f, 1.9f) },
+            { "OfficeDesk",    new PropSpec(0.85f, 1.6f) },
+            { "FilingCabinet", new PropSpec(1.5f,  0.7f) },
+            { "XRayMachine",   new PropSpec(2.0f,  1.5f) },
+            { "WashingMachine", new PropSpec(1.0f, 0.85f) },
+            { "KitchenCounter", new PropSpec(0.95f, 1.8f) },
+            { "DiningTable",   new PropSpec(0.85f, 1.9f) },
+            { "Bookshelf",     new PropSpec(2.0f,  1.2f) },
+            { "MorgueUnit",    new PropSpec(1.7f,  1.5f) },
+            { "Boiler",        new PropSpec(1.9f,  1.3f) },
+            { "Crib",          new PropSpec(1.0f,  1.2f) },
+            { "OxygenTank",    new PropSpec(1.4f,  0.5f) },
+            { "Sink",          new PropSpec(1.0f,  0.8f) },
+            { "SteelLocker",   new PropSpec(1.9f,  0.9f) },
         };
 
-        // 층마다 방 테마에 맞는 소품 후보 (방마다 이 중에서 무작위로 몇 개를 네 모서리 자리에 놓는다)
-        static readonly string[][] ThemePool =
-        {
-            new[] { "MetalShelf", "MetalShelf", "MetalShelf", "MedicineCart", "Wheelchair" },                       // 지하2: 창고, 기계실
-            new[] { "ExamTable", "ExamTable", "FoldingScreen", "MetalShelf", "MedicineCart", "IVStand" },           // 지하1: 영안실, 검사실
-            new[] { "WaitingBench", "WaitingBench", "MetalShelf", "MedicineCart", "IVStand", "Wheelchair", "FoldingScreen", "NurseCounter" },   // 1층: 접수, 진료
-            new[] { "HospitalBed", "HospitalBed", "HospitalBed", "IVStand", "FoldingScreen", "MedicineCart" },     // 2층: 병실
-            new[] { "HospitalBed", "HospitalBed", "IVStand", "FoldingScreen", "ExamTable", "Wheelchair" },          // 3층: 병실, 수술 준비
-        };
-        static readonly string[] AnchorNames = { "NW", "NE", "SW", "SE" };
+        static readonly string[] WideAnchors = { "NW", "NE", "SW", "SE", "NM", "SM" };
+        static readonly string[] NarrowAnchors = { "W0", "W1", "W2", "E0", "E1", "E2" };
 
-        /// <summary>방 하나의 소품 목록 ("모델:자리"). 복도는 따로(CorridorPropSpots) 놓는다.</summary>
+        /// <summary>방 하나의 소품 목록 ("모델:자리"). 방의 환경(RoomThemes)이 정한 소품 중에서 무작위로 놓는다. 복도는 따로(CorridorPropSpots) 놓는다.</summary>
         static List<string> PropsFor(int floor, int room)
         {
             var list = new List<string>();
             if (TowerLayout.IsCorridorRoom(room)) return list;
+            var env = RoomThemes.Get(floor, room);
+            if (env.props == null || env.props.Length == 0) return list;
+
             var rng = new System.Random(floor * 977 + room * 31 + 5);
-            var pool = ThemePool[floor];
-            int count = 3 + rng.Next(3);   // 3~5개
             Rect rr = TowerLayout.RoomRect(room);
-            var names = new List<string>(AnchorNames);
-            if (rr.width * rr.height >= 80f) { names.Add("NM"); names.Add("SM"); }   // 큰 방은 벽 가운데에도 놓는다
+            bool narrow = rr.width < 7.5f;
+            var names = new List<string>(narrow ? NarrowAnchors : WideAnchors);
+            if (!narrow && rr.width * rr.height < 80f) { names.Remove("NM"); names.Remove("SM"); }
+
             // 문 앞은 피한다
-            var doorPts = doorRequests.Where(d => d.floor == floor).Select(d => new Vector2(d.center.x, d.center.z)).Concat(Edges.Select(e => new Vector2(e.x, e.z))).ToList();
+            var doorPts = doorRequests.Where(d => d.floor == floor).Select(d => new Vector2(d.center.x, d.center.z))
+                .Concat(Edges.Select(e => new Vector2(e.x, e.z))).ToList();
             names = names.Where(n =>
             {
                 var a = ResolveAnchor(n, room);
                 var wp = new Vector2(rr.center.x + a.pos.x, rr.center.y + a.pos.y);
-                return !doorPts.Any(d => Vector2.Distance(d, wp) < 2.8f);
-            }).ToList();
-            var anchors = names.OrderBy(_ => rng.Next()).ToList();
+                return !doorPts.Any(d => Vector2.Distance(d, wp) < 2.4f);
+            }).OrderBy(_ => rng.Next()).ToList();
 
-            // 특별한 방: 정문 로비는 접수대, 간호사실은 간호사 카운터
-            if (floor == TowerLayout.GroundFloor && room == TowerLayout.ExitRoom) { for (int i = 0; i < anchors.Count && i < 4; i++) list.Add(new[] { "NurseCounter", "WaitingBench", "WaitingBench", "Wheelchair" }[i] + ":" + anchors[i]); return list; }
-            if (floor == TowerLayout.NurseStationFloor && room == TowerLayout.NurseStationRoom) { for (int i = 0; i < anchors.Count && i < 3; i++) list.Add(new[] { "NurseCounter", "MetalShelf", "MedicineCart" }[i] + ":" + anchors[i]); return list; }
-            if (HallHasStairsInRoom(floor, room)) return list;
-
-            for (int i = 0; i < count && i < anchors.Count; i++) list.Add(pool[rng.Next(pool.Length)] + ":" + anchors[i]);
+            int count = narrow ? 3 + rng.Next(3) : 4 + rng.Next(3);
+            for (int i = 0; i < count && i < names.Count; i++)
+                list.Add(env.props[rng.Next(env.props.Length)] + ":" + names[i]);
             return list;
         }
 
@@ -161,13 +179,8 @@ namespace Escape.EditorTools
                 lockedDoorMat = TextureMaterial("HospitalDoorLocked", HospitalTexDir + "/DoorLocked.png", new Vector2(1f, 1f), Vector2.zero, 0.25f);
         }
 
-        static Material WallMaterialFor(float length)
-        {
-            var decay = DecayWallMaterial(length);
-            if (decay != null) return decay;
-            if (wallShortMat == null || wallLongMat == null) return wallMat;
-            return length <= 3.5f ? wallShortMat : (length <= 6.5f ? wallMat : wallLongMat);
-        }
+        /// <summary>벽 코어(속)용 재질. 보이는 면은 방마다 EnvBuilder의 벽 면이 덮는다.</summary>
+        static Material WallMaterialFor(float length) => wallMat;
 
         /// <summary>모든 층의 방과 복도에 소품을 놓는다. 없는 모델은 건너뛴다 (모델이 준비되는 대로 늘어난다).</summary>
         static void BuildHospitalRooms(Transform parent)
@@ -194,6 +207,22 @@ namespace Escape.EditorTools
             Debug.Log($"[HospitalBuilder] 소품 {placed}개 배치, 건너뜀 {skipped}개 (모델 없음)");
         }
 
+        /// <summary>모델 파일이 있으면 그대로, 없으면 비슷한 모델로 대신한다. 둘 다 없으면 null.</summary>
+        static string ResolveModel(string model)
+        {
+            string[] chain;
+            switch (model)
+            {
+                case "Crib": chain = new[] { "Crib", "HospitalBed" }; break;
+                case "OxygenTank": chain = new[] { "OxygenTank", "IVStand" }; break;
+                case "Sink": chain = new[] { "Sink", "KitchenCounter", "MedicineCart" }; break;
+                default: chain = new[] { model }; break;
+            }
+            foreach (var m in chain)
+                if (System.IO.File.Exists($"{PropTools.PropsDir}/{m}/{m}.fbx")) return m;
+            return null;
+        }
+
         static bool PlaceProp(Transform root, int floor, int room, string model, string anchorName)
         {
             if (!AnchorUsable(floor, room, anchorName)) return false;
@@ -206,7 +235,8 @@ namespace Escape.EditorTools
         /// <summary>소품 하나를 pos에 놓는다 (faceYaw: 소품이 바라볼 방향). anchor가 있으면 침대에 숨는 자리를 붙인다.</summary>
         static bool PlacePropAt(Transform root, int floor, string model, Vector3 pos, float faceYaw, AnchorSpot? anchor)
         {
-            if (!System.IO.File.Exists($"{PropTools.PropsDir}/{model}/{model}.fbx")) return false;
+            model = ResolveModel(model);
+            if (model == null) return false;
             if (!PropSpecs.TryGetValue(model, out var spec)) return false;
 
             var holder = new GameObject($"{model}_{TowerLayout.ShortLabel(floor)}").transform;
@@ -216,18 +246,13 @@ namespace Escape.EditorTools
             var go = PropTools.Instantiate(model, holder, spec.height, spec.maxSide, faceYaw + spec.frontYaw);
             if (go == null) { Object.DestroyImmediate(holder.gameObject); return false; }
 
-            // 충돌체 (플레이어가 통과하지 못한다) + 추적자 길찾기에서 비켜 가도록 NavMesh 장애물
+            // 충돌체 (플레이어가 통과하지 못한다) + 추적자 길찾기에서 비켜 가도록 걸을 수 없는 구역 표시
             var b = PropTools.Bounds(go);
             var col = holder.gameObject.AddComponent<BoxCollider>();
             col.center = holder.InverseTransformPoint(b.center);
             col.size = b.size;
 
-            var obstacle = holder.gameObject.AddComponent<NavMeshObstacle>();
-            obstacle.shape = NavMeshObstacleShape.Box;
-            obstacle.center = col.center;
-            obstacle.size = new Vector3(b.size.x, b.size.y, b.size.z);
-            obstacle.carving = true;
-            obstacle.carveOnlyStationary = true;
+            MarkNotWalkable(holder.gameObject);
 
             if (model == "HospitalBed" && anchor.HasValue) AddBedHidingSpot(holder, anchor.Value, TowerLayout.FloorY(floor));
             return true;

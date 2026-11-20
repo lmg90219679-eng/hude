@@ -42,52 +42,32 @@ namespace Escape.EditorTools
 
         static readonly List<DoorRequest> doorRequests = new List<DoorRequest>();
 
-        // 방 사이 통로. 문의 중심 좌표(x, z)와 벽 방향. open이면 문 없이 뚫린 복도 이음매(너비 w)다.
-        struct Edge { public int a, b; public bool vertical; public float x, z; public bool open; public float w; }
+        // 방 사이 통로는 TowerLayout이 생성한다. (문의 중심 좌표, 벽 방향, 뚫린 이음매 여부)
+        static IReadOnlyList<TowerLayout.DoorEdge> Edges => TowerLayout.Edges;
 
-        static Edge DoorEdge(int a, int b, bool vertical, float x, float z) =>
-            new Edge { a = a, b = b, vertical = vertical, x = x, z = z };
-        static Edge OpenLink(int a, int b, bool vertical, float x, float z, float w) =>
-            new Edge { a = a, b = b, vertical = vertical, x = x, z = z, open = true, w = w };
-
-        static readonly Edge[] Edges =
+        const float StairDoorWidth = 1.8f;
+        static int EdgeStairWest => FindStairEdge(TowerLayout.WestStairRoom);
+        static int EdgeStairEast => FindStairEdge(TowerLayout.EastStairRoom);
+        static int EdgeStartRoom
         {
-            // 남쪽 병동 -> 남쪽 복도 (벽 z=10)
-            DoorEdge(0, 6, false, 8f, 10f), DoorEdge(1, 6, false, 13.5f, 10f), DoorEdge(2, 7, false, 24f, 10f), DoorEdge(3, 8, false, 36f, 10f), DoorEdge(4, 8, false, 43f, 10f),
-            // 남쪽 병동 안의 방끼리
-            DoorEdge(0, 1, true, 10f, 5f), DoorEdge(1, 2, true, 18f, 5f), DoorEdge(2, 3, true, 30f, 5f), DoorEdge(3, 4, true, 38f, 5f),
-            // 남쪽 복도 구간 이음매
-            OpenLink(6, 7, true, 17f, 12f, 4f), OpenLink(7, 8, true, 34f, 12f, 4f),
-            // 서쪽 계단 홀의 비상구
-            DoorEdge(5, 6, true, 6f, 12f),
-            // 중간 병동 <-> 남쪽 복도 (벽 z=14), 연결 복도는 뚫려 있다
-            DoorEdge(9, 6, false, 10f, 14f), OpenLink(10, 6, false, 15.5f, 14f, 3f), DoorEdge(11, 7, false, 24f, 14f), OpenLink(12, 7, false, 32.5f, 14f, 3f), DoorEdge(13, 8, false, 41f, 14f),
-            // 중간 병동 <-> 북쪽 복도 (벽 z=22)
-            DoorEdge(9, 14, false, 7f, 22f), OpenLink(10, 14, false, 15.5f, 22f, 3f), DoorEdge(11, 15, false, 24f, 22f), OpenLink(12, 15, false, 32.5f, 22f, 3f), DoorEdge(13, 16, false, 38f, 22f),
-            // 중간 병동 안: 방과 연결 복도
-            DoorEdge(9, 10, true, 14f, 18f), DoorEdge(10, 11, true, 17f, 18f), DoorEdge(11, 12, true, 31f, 18f), DoorEdge(12, 13, true, 34f, 18f),
-            // 북쪽 복도 구간 이음매
-            OpenLink(14, 15, true, 17f, 24f, 4f), OpenLink(15, 16, true, 34f, 24f, 4f),
-            // 동쪽 계단 홀의 비상구
-            DoorEdge(16, 17, true, 42f, 24f),
-            // 북쪽 병동 -> 북쪽 복도 (벽 z=26)
-            DoorEdge(18, 14, false, 5f, 26f), DoorEdge(19, 14, false, 13.5f, 26f), DoorEdge(20, 15, false, 24f, 26f), DoorEdge(21, 16, false, 36f, 26f), DoorEdge(22, 16, false, 40f, 26f),
-            // 북쪽 병동 안의 방끼리
-            DoorEdge(18, 19, true, 10f, 31f), DoorEdge(19, 20, true, 18f, 31f), DoorEdge(20, 21, true, 30f, 31f), DoorEdge(21, 22, true, 38f, 31f),
-        };
+            get
+            {
+                // 시작 방의 문 하나는 복도와 열쇠 없이 이어진다
+                for (int i = 0; i < Edges.Count; i++)
+                    if (!Edges[i].open && (Edges[i].a == TowerLayout.StartRoom || Edges[i].b == TowerLayout.StartRoom)
+                        && TowerLayout.IsCorridorRoom(Edges[i].a == TowerLayout.StartRoom ? Edges[i].b : Edges[i].a)) return i;
+                return -1;
+            }
+        }
 
-        static int FindEdge(int a, int b)
+        static int FindStairEdge(int hall)
         {
-            for (int i = 0; i < Edges.Length; i++)
-                if ((Edges[i].a == a && Edges[i].b == b) || (Edges[i].a == b && Edges[i].b == a)) return i;
+            for (int i = 0; i < Edges.Count; i++) if (Edges[i].stair && (Edges[i].a == hall || Edges[i].b == hall)) return i;
             return -1;
         }
 
-        const float StairDoorWidth = 1.8f;
-        static int EdgeStairWest => FindEdge(TowerLayout.WestStairRoom, 6);
-        static int EdgeStairEast => FindEdge(16, TowerLayout.EastStairRoom);
-        static int EdgeStartRoom => FindEdge(TowerLayout.StartRoom, 15);   // 시작 방은 북쪽 복도와 열쇠 없이 이어진다
-        const int LockedPerFloor = 5;
+        const int LockedPerFloor = 10;
+        const int LoopsPerFloor = 70;
 
         class FloorPlan
         {
@@ -127,35 +107,42 @@ namespace Escape.EditorTools
             BuildElectricalRoomGeometry(map.transform);
             BuildElevatorGeometry(map.transform);
             BuildStairwells(map.transform);
+
+            // 가구와 소품은 NavMesh를 굽기 전에 놓는다 (소품 자리는 걸을 수 없는 구역으로 표시돼 길이 비켜 간다)
+            for (int f = 0; f < TowerLayout.Floors; f++) BuildFurniture(map.transform, f);
+            BuildHospitalRooms(map.transform);
+            BuildDecayProps(map.transform);
             BuildNavMeshForTower(map);
 
             // 플레이어: 1층 북쪽 가운데 방(상담실)에서 시작. 계단은 복도 양 끝 방화문 너머에 있어서 직접 찾아야 한다
             var player = BuildPlayer(TowerLayout.RoomCenter(TowerLayout.GroundFloor, TowerLayout.StartRoom) + new Vector3(0f, 0f, 1.5f));
 
-            // 층마다 추적자 1명
+            // 층마다 추적자 2명 (건물이 크다)
             for (int f = 0; f < TowerLayout.Floors; f++)
             {
-                var wps = BuildFloorWaypoints(f, rng);
-                int startRoom = f == TowerLayout.GroundFloor ? 0 : (f % 2 == 0 ? 22 : 18);
-                BuildChaser(player.transform, wps, TowerLayout.RoomCenter(f, startRoom), $"Chaser_{TowerLayout.ShortLabel(f)}");
+                for (int k = 0; k < 2; k++)
+                {
+                    var wps = BuildFloorWaypoints(f, rng);
+                    int startRoom = k == 0 ? TowerLayout.ChaserStartRooms[f] : TowerLayout.ChaserStartRooms[(f + 2) % TowerLayout.Floors];
+                    BuildChaser(player.transform, wps, TowerLayout.RoomCenter(f, startRoom), $"Chaser_{TowerLayout.ShortLabel(f)}_{k}");
+                }
             }
 
-            // 문, 가구, 계단은 NavMesh를 굽고 나서 만든다 (닫힌 문이 길을 막지 않게)
+            // 문과 계단 입구는 NavMesh를 굽고 나서 만든다 (닫힌 문이 길을 막지 않게)
             BuildDoors(map.transform);
-            for (int f = 0; f < TowerLayout.Floors; f++) BuildFurniture(map.transform, f);
-            BuildHospitalRooms(map.transform);
-            BuildDecayProps(map.transform);
             BuildStairs(map.transform);
             BuildPowerBoxOnGround(map.transform);
             BuildElectricalRoomProps(map.transform);
             BuildElevatorProps(map.transform);
-            BuildBasementLights(map.transform);
+            BuildRoomLights(map.transform);
             new GameObject("PowerGrid").AddComponent<Escape.Core.PowerGrid>();
             new GameObject("PowerEffects").AddComponent<Escape.Core.PowerEffects>();
 
             var itemSettings = new GameObject("ItemVisualSettings").AddComponent<ItemVisualSettings>();
             itemSettings.baseMaterial = floorMat;
             EditorUtility.SetDirty(itemSettings);
+            new GameObject("FloorVisibility").AddComponent<Escape.Core.FloorVisibility>();
+            MarkStaticBatching(map.transform);
             new GameObject("TowerSpawner").AddComponent<TowerSpawner>();
             new GameObject("MapTracker").AddComponent<MapTracker>();
             new GameObject("ChaserDirector").AddComponent<ChaserDirector>();
@@ -170,6 +157,23 @@ namespace Escape.EditorTools
             Debug.Log($"[TowerBuilder] 씬 생성 완료: {ScenePath} (잠긴 문 {doorRequests.Count(d => d.kind == DoorKind.Locked)}개)");
         }
 
+        /// <summary>움직이지 않는 건물 부품(벽, 바닥, 천장, 소품, 계단통)을 정적 배칭 대상으로 표시한다. 문, 서랍장, 승강기는 움직이므로 뺀다.</summary>
+        static void MarkStaticBatching(Transform map)
+        {
+            string[] prefixes = { "Floor_", "Decay_", "WallSkins_", "DecayProps", "HospitalProps", "Stairwells", "ElectricalRoom" };
+            int count = 0;
+            foreach (Transform child in map)
+            {
+                if (!prefixes.Any(p => child.name.StartsWith(p))) continue;
+                foreach (var t in child.GetComponentsInChildren<Transform>(true))
+                {
+                    GameObjectUtility.SetStaticEditorFlags(t.gameObject, StaticEditorFlags.BatchingStatic);
+                    count++;
+                }
+            }
+            Debug.Log($"[TowerBuilder] 정적 배칭 표시 {count}개");
+        }
+
         // ---------- 층 설계 (방 연결) ----------
 
         static FloorPlan MakePlan(System.Random rng)
@@ -181,7 +185,7 @@ namespace Escape.EditorTools
             for (int r = 0; r < TowerLayout.RoomsPerFloor; r++) if (TowerLayout.IsCorridorRoom(r)) reach.Add(r);
 
             var used = new HashSet<int>();
-            for (int e = 0; e < Edges.Length; e++) if (Edges[e].open) used.Add(e);
+            for (int e = 0; e < Edges.Count; e++) if (Edges[e].open || Edges[e].stair) used.Add(e);
             foreach (int e in new[] { EdgeStairWest, EdgeStairEast, EdgeStartRoom })
             {
                 plan.Type[e] = DoorKind.Normal;
@@ -192,7 +196,7 @@ namespace Escape.EditorTools
             var tree = new List<(int edge, int newRoom)>();
             while (reach.Count < TowerLayout.RoomsPerFloor)
             {
-                var candidates = Enumerable.Range(0, Edges.Length)
+                var candidates = Enumerable.Range(0, Edges.Count)
                     .Where(e => !used.Contains(e) && (reach.Contains(Edges[e].a) ^ reach.Contains(Edges[e].b))).ToList();
                 int pick = candidates[rng.Next(candidates.Count)];
                 int newRoom = reach.Contains(Edges[pick].a) ? Edges[pick].b : Edges[pick].a;
@@ -210,9 +214,9 @@ namespace Escape.EditorTools
             }
 
             // 순환 통로: 열쇠 없이 지나는 일반 문 몇 개 (막다른 길만 있으면 쫓길 때 갇힌다). 나머지는 막힌 벽.
-            var rest = Enumerable.Range(0, Edges.Length).Where(e => !used.Contains(e)).OrderBy(_ => rng.Next()).ToList();
+            var rest = Enumerable.Range(0, Edges.Count).Where(e => !used.Contains(e)).OrderBy(_ => rng.Next()).ToList();
             for (int k = 0; k < rest.Count; k++)
-                plan.Type[rest[k]] = k < 7 ? DoorKind.Normal : (DoorKind?)null;
+                plan.Type[rest[k]] = k < LoopsPerFloor ? DoorKind.Normal : (DoorKind?)null;
 
             return plan;
         }
@@ -253,7 +257,7 @@ namespace Escape.EditorTools
             float mid = (a + b) * 0.5f;
             Vector3 center = vertical ? new Vector3(line, y, mid) : new Vector3(mid, y, line);
             MakeWall(root, center, vertical ? Vector3.forward : Vector3.right, b - a);
-            AddWallTrim(root, y, vertical, line, a, b);
+            AddWallSkins(y, vertical, line, a, b);
         }
 
         static int LineKey(float coord) => Mathf.RoundToInt(coord * 100f);
@@ -333,7 +337,7 @@ namespace Escape.EditorTools
             }
 
             // 방 사이 통로: 문 또는 뚫린 이음매
-            for (int e = 0; e < Edges.Length; e++)
+            for (int e = 0; e < Edges.Count; e++)
             {
                 var ed = Edges[e];
                 float line = ed.vertical ? ed.x : ed.z;
@@ -393,12 +397,17 @@ namespace Escape.EditorTools
                     WallRun(root, y, vertical, line, m.x, m.y, inside);
                 }
             }
+
+            FlushWallSkins(parent, floor);
         }
 
         static Transform[] BuildFloorWaypoints(int floor, System.Random rng)
         {
             var root = new GameObject($"Patrol_{TowerLayout.ShortLabel(floor)}").transform;
-            var rooms = Enumerable.Range(0, TowerLayout.RoomsPerFloor).OrderBy(_ => rng.Next()).ToList();
+            // 건물이 커서 모든 방을 돌지 않고, 복도와 방 몇 곳을 무작위로 순찰한다
+            var rooms = Enumerable.Range(0, TowerLayout.RoomsPerFloor)
+                .Where(r => r != TowerLayout.WestStairRoom && r != TowerLayout.EastStairRoom)
+                .OrderBy(_ => rng.Next()).Take(36).ToList();
             var list = new List<Transform>();
             for (int n = 0; n < rooms.Count; n++)
             {
@@ -631,7 +640,7 @@ namespace Escape.EditorTools
                 // 서랍장: 계단 홀 1개, 복도 2개, 나머지 3개
                 bool corr = TowerLayout.IsCorridorRoom(room);
                 float area = r.width * r.height;
-                int want = stairRoom ? 0 : (corr ? (r.width >= 12f ? 3 : 2) : (area >= 100f ? 4 : 3));   // 계단 홀에는 서랍장을 두지 않는다
+                int want = stairRoom ? 0 : (corr ? Mathf.Clamp(Mathf.RoundToInt(r.width / 9f), 1, 3) : (area >= 90f ? 2 : (rng.NextDouble() < 0.55 ? 2 : 1)));   // 계단 홀에는 서랍장을 두지 않는다
                 var cands = CabinetCandidates(floor, room, avoid).OrderBy(_ => rng.Next()).ToList();
                 var chosen = new List<CabinetSlot>();
                 foreach (var c in cands)
@@ -708,6 +717,7 @@ namespace Escape.EditorTools
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = metalCabinetTint;
             }
 
+            MarkNotWalkable(go);
             var cont = go.AddComponent<Container>();
             var so = new SerializedObject(cont);
             so.FindProperty("drawer").objectReferenceValue = go.transform.Find("Drawer");
@@ -749,6 +759,7 @@ namespace Escape.EditorTools
             anchor.SetParent(root, false);
             anchor.localPosition = new Vector3(0f, 0.76f, 0.06f);
 
+            MarkNotWalkable(root.gameObject);
             var cont = root.gameObject.AddComponent<Container>();
             var so = new SerializedObject(cont);
             so.FindProperty("drawer").objectReferenceValue = drawer.transform;

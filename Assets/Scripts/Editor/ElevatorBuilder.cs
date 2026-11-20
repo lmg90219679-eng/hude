@@ -17,9 +17,9 @@ namespace Escape.EditorTools
     /// </summary>
     public static partial class Week1SceneBuilder
     {
-        const float HallMinX = 21f, HallMaxX = 27f, HallMinZ = 36f, HallMaxZ = 40f;
-        const float ShaftMinX = 22f, ShaftMaxX = 26f, ShaftMinZ = 40f, ShaftMaxZ = 44f;
-        const float ShaftCenterX = 24f, CabinCenterZ = 42f;
+        const float HallMinX = 47f, HallMaxX = 53f, HallMinZ = 74f, HallMaxZ = 78f;
+        const float ShaftMinX = 48f, ShaftMaxX = 52f, ShaftMinZ = 78f, ShaftMaxZ = 82f;
+        const float ShaftCenterX = 50f, CabinCenterZ = 80f;
         const float LiftDoorWidth = 2.4f, LiftDoorHeight = 2.4f;
         const string ElevTexDir = "Assets/Textures/Elevator";
 

@@ -16,6 +16,9 @@ namespace Escape.Core
 
         Light lamp;
         bool on;
+
+        /// <summary>차단기가 올라가 불이 들어오는 중이거나 들어와 있는가 (층 가시성 관리가 이 조명을 켜도 되는지 알아본다).</summary>
+        public bool IsOn => on;
         float timer;
 
         void Awake()
