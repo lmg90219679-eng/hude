@@ -23,7 +23,7 @@ namespace Escape.EditorTools
     /// </summary>
     public static partial class Week1SceneBuilder
     {
-        enum DoorKind { Normal, Locked, Exit }
+        enum DoorKind { Normal, Locked, Exit, Secret }
 
         struct DoorRequest
         {
@@ -78,6 +78,7 @@ namespace Escape.EditorTools
                 BuildFloorGeometry(map.transform, f, plans[f]);
             }
 
+            BuildElectricalRoomGeometry(map.transform);
             BuildNavMeshForTower(map);
 
             // 플레이어: 1층 서쪽 계단방에서 시작
@@ -96,6 +97,10 @@ namespace Escape.EditorTools
             for (int f = 0; f < TowerLayout.Floors; f++) BuildFurniture(map.transform, f);
             BuildStairs(map.transform);
             BuildPowerBoxOnGround(map.transform);
+            BuildElectricalRoomProps(map.transform);
+            BuildBasementLights(map.transform);
+            new GameObject("PowerGrid").AddComponent<Escape.Core.PowerGrid>();
+            new GameObject("PowerEffects").AddComponent<Escape.Core.PowerEffects>();
 
             var itemSettings = new GameObject("ItemVisualSettings").AddComponent<ItemVisualSettings>();
             itemSettings.baseMaterial = floorMat;
@@ -205,7 +210,17 @@ namespace Escape.EditorTools
                 float c = k * Cell + Cell * 0.5f;
                 bool exitHere = floor == TowerLayout.GroundFloor && k == 1;   // 남쪽 바깥벽의 가운데 방 = 1층 정문
 
-                WallSegment(root, new Vector3(0f, y, c), Vector3.forward, false);                 // 서쪽
+                // 3층 서쪽 벽의 남쪽 방(0,0)에는 전기실로 통하는 숨겨진 문이 있다 (벽처럼 보인다)
+                bool secretHere = floor == TowerLayout.Floors - 1 && k == 0;
+                WallSegment(root, new Vector3(0f, y, c), Vector3.forward, secretHere);            // 서쪽
+                if (secretHere)
+                {
+                    doorRequests.Add(new DoorRequest
+                    {
+                        center = new Vector3(0f, y, c), along = Vector3.forward, kind = DoorKind.Secret,
+                        floor = floor, roomA = 0, roomB = 0, treeOrder = -1,
+                    });
+                }
                 WallSegment(root, new Vector3(size, y, c), Vector3.forward, false);               // 동쪽
                 WallSegment(root, new Vector3(c, y, size), Vector3.right, false);                 // 북쪽
                 WallSegment(root, new Vector3(c, y, 0f), Vector3.right, exitHere);                // 남쪽
@@ -303,7 +318,7 @@ namespace Escape.EditorTools
                     ? new Vector3(DoorWidth, 2.6f, 0.1f)
                     : new Vector3(0.1f, 2.6f, DoorWidth);
                 panel.GetComponent<Renderer>().sharedMaterial =
-                    req.kind == DoorKind.Exit ? exitMat : (req.kind == DoorKind.Locked ? lockedDoorMat : doorMat);
+                    req.kind == DoorKind.Exit ? exitMat : req.kind == DoorKind.Locked ? lockedDoorMat : req.kind == DoorKind.Secret ? wallMat : doorMat;
 
                 if (req.kind == DoorKind.Exit)
                 {
@@ -321,6 +336,7 @@ namespace Escape.EditorTools
                 door.roomB = req.roomB;
                 door.lockKeyId = req.keyId;
                 door.treeOrder = req.treeOrder;
+                door.secret = req.kind == DoorKind.Secret;
                 EditorUtility.SetDirty(door);
             }
         }
@@ -558,6 +574,122 @@ namespace Escape.EditorTools
             portal.exitPoint = exit;
             EditorUtility.SetDirty(portal);
             return portal;
+        }
+
+        // ---------- 3층 숨겨진 전기실 ----------
+
+        const string BreakerPanelPrefabPath = "Assets/Prefabs/BreakerPanel.prefab";
+        // 전기실: 3층 서쪽 건물 밖, x 0 ~ -6, z 0 ~ 8. 입구는 방 (0,0)의 서쪽 벽(숨겨진 문).
+        const float ElecWidth = 6f;
+
+        static void BuildElectricalRoomGeometry(Transform parent)
+        {
+            int floor = TowerLayout.Floors - 1;
+            float y = TowerLayout.FloorY(floor);
+            var root = new GameObject("ElectricalRoom").transform;
+            root.SetParent(parent);
+
+            var slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            slab.name = "Slab";
+            slab.transform.SetParent(root);
+            slab.transform.position = new Vector3(-ElecWidth * 0.5f, y - 0.5f, Cell * 0.5f);
+            slab.transform.localScale = new Vector3(ElecWidth, 1f, Cell);
+            slab.GetComponent<Renderer>().sharedMaterial = floorMat;
+
+            var roof = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            roof.name = "Roof";
+            roof.transform.SetParent(root);
+            roof.transform.position = new Vector3(-ElecWidth * 0.5f, y + WallHeight + 0.5f, Cell * 0.5f);
+            roof.transform.localScale = new Vector3(ElecWidth, 1f, Cell);
+            roof.GetComponent<Renderer>().sharedMaterial = wallMat;
+
+            // 서쪽 벽, 북쪽 벽, 남쪽 벽 (동쪽은 건물의 바깥벽이 문틈과 함께 이미 있다)
+            MakeWall(root, new Vector3(-ElecWidth, y, Cell * 0.5f), Vector3.forward, Cell);
+            MakeWall(root, new Vector3(-ElecWidth * 0.5f, y, Cell), Vector3.right, ElecWidth);
+            MakeWall(root, new Vector3(-ElecWidth * 0.5f, y, 0f), Vector3.right, ElecWidth);
+        }
+
+        static void BuildElectricalRoomProps(Transform parent)
+        {
+            int floor = TowerLayout.Floors - 1;
+            float y = TowerLayout.FloorY(floor);
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(BreakerPanelPrefabPath)
+                         ?? Escape.EditorTools.PropTools.BuildBreakerPanelPrefab(BreakerPanelPrefabPath);
+
+            var root = new GameObject("BreakerPanelInstance").transform;
+            root.SetParent(parent);
+            // 서쪽 벽에 붙이고(앞면이 동쪽을 향한다), 바닥에서 1m 위에 건다
+            root.position = new Vector3(-ElecWidth + 0.16f + 0.26f, y + 1.0f, Cell * 0.5f);
+
+            GameObject inst = null;
+            if (prefab != null)
+            {
+                inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                inst.transform.SetParent(root, false);
+                inst.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            }
+
+            if (inst != null)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    var pivot = inst.transform.Find("LeverPivot" + i);
+                    if (pivot == null) continue;
+
+                    // 레버가 젖혀져도 움직이지 않는 판정용 충돌체 (BreakerLever 컴포넌트가 여기에 붙는다)
+                    var hit = new GameObject("LeverHit" + i);
+                    hit.transform.SetParent(inst.transform, false);
+                    hit.transform.position = pivot.position + inst.transform.forward * 0.12f;
+                    hit.transform.rotation = inst.transform.rotation;
+                    var box = hit.AddComponent<BoxCollider>();
+                    box.size = new Vector3(0.16f, 0.42f, 0.34f);
+                    box.isTrigger = true;
+
+                    var lever = hit.AddComponent<BreakerLever>();
+                    lever.index = i;
+                    var so = new SerializedObject(lever);
+                    so.FindProperty("pivot").objectReferenceValue = pivot;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(lever);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[TowerBuilder] 차단기 패널 모델이 없어 전기실을 비워 둔다.");
+            }
+
+            // 비상등: 어둠 속에서 전기실을 찾을 수 있게 붉은 불빛 하나
+            var lg = new GameObject("EmergencyLamp").AddComponent<Light>();
+            lg.transform.SetParent(parent);
+            lg.transform.position = new Vector3(-ElecWidth * 0.5f, y + 2.7f, Cell * 0.5f);
+            lg.type = LightType.Point;
+            lg.range = 7f;
+            lg.intensity = 0.8f;
+            lg.color = new Color(1f, 0.25f, 0.2f);
+        }
+
+        // ---------- 지하 조명 (첫 번째 차단기가 올라가면 미세하게 켜진다) ----------
+
+        static void BuildBasementLights(Transform parent)
+        {
+            var root = new GameObject("BasementLights").transform;
+            root.SetParent(parent);
+            for (int f = 0; f <= 1; f++)   // 지하2, 지하1
+            {
+                for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
+                {
+                    var go = new GameObject($"PowerLight_{TowerLayout.ShortLabel(f)}_{room}");
+                    go.transform.SetParent(root);
+                    go.transform.position = TowerLayout.RoomCenter(f, room) + Vector3.up * 2.6f;
+                    var lg = go.AddComponent<Light>();
+                    lg.type = LightType.Point;
+                    lg.range = 7f;
+                    lg.color = new Color(0.75f, 0.82f, 1f);
+                    lg.shadows = LightShadows.None;
+                    go.AddComponent<Escape.Core.PowerLight>();
+                }
+            }
         }
 
         // ---------- 1층 전원함 ----------

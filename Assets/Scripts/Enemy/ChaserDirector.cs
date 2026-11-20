@@ -17,11 +17,15 @@ namespace Escape.Enemy
         [SerializeField] float followRange = 18f;
         [SerializeField] float startGraceSeconds = 30f;
 
+        public static ChaserDirector Instance { get; private set; }
+        public bool HuntMode { get; private set; }
+
         ChaserAI[] chasers;
         PlayerController player;
 
         void Awake()
         {
+            Instance = this;
             chasers = FindObjectsByType<ChaserAI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             player = FindFirstObjectByType<PlayerController>();
 
@@ -39,9 +43,27 @@ namespace Escape.Enemy
             foreach (var c in chasers)
             {
                 if (c == null) continue;
-                bool want = Mathf.Abs(c.Floor - playerFloor) <= 1;
+                bool want = HuntMode || Mathf.Abs(c.Floor - playerFloor) <= 1;
                 if (c.gameObject.activeSelf != want) c.gameObject.SetActive(want);
             }
+        }
+
+        /// <summary>마지막 차단기: 모든 추적자가 추격 모드로 바뀌어 건물 전체를 돌아다닌다.</summary>
+        public void EnterHuntMode()
+        {
+            if (HuntMode) return;
+            HuntMode = true;
+            foreach (var c in chasers)
+            {
+                if (c == null) continue;
+                c.gameObject.SetActive(true);
+                c.SetHunt(true);
+            }
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
         }
 
         void OnStairUsed(int from, int to, Vector3 arrival)

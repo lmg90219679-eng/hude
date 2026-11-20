@@ -105,7 +105,7 @@ namespace Escape.EditorTools
         /// 비율을 유지한 채 targetHeight(미터)에 높이를 맞춘다. 바닥 중앙이 원점.
         /// widthLimit이 0보다 크면 가로(X)나 깊이(Z)가 그 값을 넘지 않게 더 줄인다.
         /// </summary>
-        public static GameObject Instantiate(string name, Transform parent, float targetHeight, float widthLimit = 0f, float yaw = 0f, float? uniformScale = null)
+        public static GameObject Instantiate(string name, Transform parent, float targetHeight, float widthLimit = 0f, float yaw = 0f, float? uniformScale = null, Quaternion? preRotation = null)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(FbxPath(name));
             if (prefab == null) return null;
@@ -123,17 +123,17 @@ namespace Escape.EditorTools
             }
             foreach (var c in go.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
 
-            Normalize(go, targetHeight, widthLimit, yaw, uniformScale);
+            Normalize(go, targetHeight, widthLimit, yaw, uniformScale, preRotation);
             return go;
         }
 
         /// <summary>크기를 맞추고 바닥 중앙을 부모의 원점에 놓는다.</summary>
-        public static void Normalize(GameObject go, float targetHeight, float widthLimit, float yaw = 0f, float? uniformScale = null)
+        public static void Normalize(GameObject go, float targetHeight, float widthLimit, float yaw = 0f, float? uniformScale = null, Quaternion? preRotation = null)
         {
             var parent = go.transform.parent;
             go.transform.localPosition = Vector3.zero;
             // Varco FBX는 Z가 위쪽인 좌표로 나와서(누워 있다) 세워 준다
-            go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(PropUpAxisFix, 0f, 0f);
+            go.transform.localRotation = (preRotation ?? Quaternion.identity) * Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(PropUpAxisFix, 0f, 0f);
             go.transform.localScale = Vector3.one;
 
             var b = Bounds(go);
@@ -194,6 +194,59 @@ namespace Escape.EditorTools
             col.center = body.transform.InverseTransformPoint(lb.center);
             var inv = body.transform.lossyScale;
             col.size = new Vector3(lb.size.x / inv.x, lb.size.y / inv.y, lb.size.z / inv.z);
+
+            string dir = System.IO.Path.GetDirectoryName(prefabPath);
+            if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            Object.DestroyImmediate(root);
+            return prefab;
+        }
+
+        // 차단기 패널: 앞면이 +Z. 세로 칸 3개의 위치(패널 중앙 기준, 미터)는 렌더링으로 맞춘 값.
+        public static float PanelHeight = 1.1f;
+        public static float LeverHeight = 0.24f;
+        public static float[] LeverSlotX = { 0.145f, 0.0f, -0.145f };   // 앞에서 봤을 때 왼쪽부터 (+X가 왼쪽)
+        public static float LeverCenterX = -0.097f;                      // 가운데 칸의 x (패널 범위 중심 기준)
+        public static float LeverY = 0.60f;                              // 칸 중심 높이 (패널 바닥 기준)
+        public static float LeverDepthFromFront = 0.10f;                 // 앞면에서 안쪽으로 들어간 정도
+
+        /// <summary>차단기 패널 프리팹: Body(열린 패널) + LeverPivot0~2(젖혀지는 레버). BreakerLever 컴포넌트는 씬 빌더가 붙인다.</summary>
+        public static GameObject BuildBreakerPanelPrefab(string prefabPath)
+        {
+            var root = new GameObject("BreakerPanelAssembly");
+            var body = Instantiate("BreakerPanel", root.transform, PanelHeight, 0f, 0f);
+            body.name = "Body";
+            var bb = Bounds(body);
+
+            for (int i = 0; i < 3; i++)
+            {
+                var pivot = new GameObject("LeverPivot" + i).transform;
+                pivot.SetParent(root.transform, false);
+                float x = bb.center.x + LeverCenterX + LeverSlotX[i];
+                float y = bb.min.y + LeverY;
+                float z = bb.max.z - LeverDepthFromFront;
+                pivot.position = new Vector3(x, y, z);
+
+                // 크기는 레버를 "세운 상태"의 높이로 정한다 (눕히고 나서 재면 엉뚱하게 커진다)
+                var probe = Instantiate("BreakerLever", pivot, LeverHeight, 0f, 0f);
+                float leverScale = probe.transform.localScale.x;
+                Object.DestroyImmediate(probe);
+
+                // 레버 모델: 바닥판이 패널 안쪽을 향하고, 손잡이가 앞(+Z)으로 나오게 눕힌다 (X로 +90도)
+                var lever = Instantiate("BreakerLever", pivot, LeverHeight, 0f, 0f, leverScale, Quaternion.Euler(90f, 0f, 0f));
+                lever.name = "Lever";
+                // 레버를 pivot 원점 근처(바닥판 중심)에 맞춘다
+                var lb = Bounds(lever);
+                lever.transform.position += new Vector3(pivot.position.x - lb.center.x, pivot.position.y - lb.center.y, pivot.position.z - lb.min.z);
+            }
+
+            // 몸통은 플레이어를 막기만 하고 시선은 통과시킨다 (안쪽 레버를 가리면 안 된다)
+            var col = body.AddComponent<BoxCollider>();
+            var b2 = Bounds(body);
+            col.center = body.transform.InverseTransformPoint(b2.center);
+            var s = body.transform.lossyScale;
+            col.size = new Vector3(b2.size.x / s.x, b2.size.y / s.y, b2.size.z / s.z);
+            body.AddComponent<Escape.Interaction.InteractPassThrough>();
 
             string dir = System.IO.Path.GetDirectoryName(prefabPath);
             if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);

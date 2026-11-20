@@ -97,6 +97,14 @@ namespace Escape.Audio
             if (click != null) sfx.PlayOneShot(click, 0.7f);
         }
 
+        AudioClip alarm;
+
+        public void PlayAlarm()
+        {
+            if (alarm == null) alarm = ProceduralSounds.Alarm();
+            sfx.PlayOneShot(alarm, 0.9f);
+        }
+
         public void PlayMetal()
         {
             if (metal == null) metal = ProceduralSounds.Metal();

@@ -13,6 +13,12 @@ namespace Escape.Interaction
         /// <summary>계단을 탔을 때 알린다. (출발 층, 도착 층, 도착 위치)</summary>
         public static event Action<int, int, Vector3> Used;
 
+        /// <summary>씬에 있는 모든 계단 (추적자가 층을 옮겨 다닐 때 쓴다).</summary>
+        public static readonly System.Collections.Generic.List<StairPortal> All = new System.Collections.Generic.List<StairPortal>();
+
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
+
         public int floor;
         public int room;
         public bool up;

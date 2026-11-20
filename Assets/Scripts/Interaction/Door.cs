@@ -22,6 +22,7 @@ namespace Escape.Interaction
         public int roomA;                  // 문이 이어주는 두 방 (roomB가 새로 열리는 쪽)
         public int roomB;
         public int treeOrder = -1;         // 층 안에서 열리는 순서 (열쇠가 풀리는 순서)
+        public bool secret;                // 숨겨진 문: 벽처럼 보이고 지도에 나오지 않는다
 
         bool open;
         bool unlocked;
@@ -43,6 +44,7 @@ namespace Escape.Interaction
                 if (who.Inventory.Has(ItemType.Crowbar)) return "E: 쇠막대로 문을 강제로 연다 (큰 소음)";
                 return "잠겨 있다";
             }
+            if (secret && !open) return "E: 벽의 틈을 밀어 본다";
             return open ? "E: 문을 닫는다" : "E: 문을 연다";
         }
 

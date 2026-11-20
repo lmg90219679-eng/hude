@@ -100,6 +100,8 @@ namespace Escape.UI
                 : $"탈출 열쇠 조각 {inventory.PieceCount}/{Inventory.PiecesRequired}";
             GUI.Label(new Rect(w - 420, 16, 400, 30), keyText, right);
             GUI.Label(new Rect(w - 420, 44, 400, 30), $"시간 {FormatTime(flow.Elapsed)}", right);
+            if (PowerGrid.Instance != null && PowerGrid.Instance.Raised > 0)
+                GUI.Label(new Rect(w - 420, 100, 400, 30), PowerGrid.Instance.Complete ? "발전기 복구 완료" : $"발전기 차단기 {PowerGrid.Instance.Raised}/{PowerGrid.LeverCount}", right);
             if (flashlight != null)
             {
                 string state = flashlight.IsOn ? "켜짐" : "꺼짐";
@@ -190,7 +192,7 @@ namespace Escape.UI
             // 문: 둘 중 한 방이라도 가 봤으면 표시 (가 보지 않은 방 자체는 안 보인다)
             foreach (var d in doors)
             {
-                if (d == null || d.floor != floor) continue;
+                if (d == null || d.floor != floor || d.secret) continue;
                 if (!map.Visited(floor, d.roomA) && !map.Visited(floor, d.roomB)) continue;
                 Rect a = RoomRect(x0, y0, cell, d.roomA), b = RoomRect(x0, y0, cell, d.roomB);
                 Vector2 mid = (a.center + b.center) * 0.5f;

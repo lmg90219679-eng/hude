@@ -2,16 +2,6 @@ using UnityEngine;
 
 namespace Escape.Items
 {
-    /// <summary>씬에 하나 두는 설정. 런타임에 만드는 아이템 모형이 쓸 기본 재질을 들고 있다 (셰이더가 빌드에서 빠지지 않게).</summary>
-    public class ItemVisualSettings : MonoBehaviour
-    {
-        public static ItemVisualSettings Instance { get; private set; }
-        public Material baseMaterial;
-
-        void Awake() => Instance = this;
-        void OnDestroy() { if (Instance == this) Instance = null; }
-    }
-
     /// <summary>
     /// 서랍을 열었을 때 안에 보이는 물건 모형을 만든다. 지금은 기본 도형으로 대충 알아볼 수 있게 만들고,
     /// 나중에 Varco에서 만든 모델이 생기면 prefab 조회로 바꾼다.

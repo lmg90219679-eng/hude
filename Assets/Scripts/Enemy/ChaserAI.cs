@@ -1,5 +1,6 @@
 using System;
 using Escape.Core;
+using Escape.Interaction;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -183,6 +184,7 @@ namespace Escape.Enemy
 
             float range = (playerLight != null && !playerLight.IsOn) ? unlitSightRange : sightRange;
             if (playerController != null && playerController.IsCrouching) range *= crouchSightFactor;
+            if (HuntMode) range *= huntSenseFactor;
             if (dist > range) return false;
             if (Vector3.Angle(eye.forward, to) > sightAngle * 0.5f) return false;
 
@@ -199,7 +201,7 @@ namespace Escape.Enemy
             if (Current == State.Chase) return;
             if (Time.time < GraceUntil) return;
             if (Mathf.Abs(position.y - transform.position.y) > 2.5f) return;   // 다른 층 소리는 못 듣는다
-            if (Vector3.Distance(transform.position, position) > radius) return;
+            if (Vector3.Distance(transform.position, position) > radius * (HuntMode ? huntSenseFactor : 1f)) return;
 
             lastKnownPosition = position;
             EnterInvestigate(position);
@@ -210,7 +212,7 @@ namespace Escape.Enemy
         void EnterPatrol()
         {
             Current = State.Patrol;
-            agent.speed = patrolSpeed;
+            agent.speed = patrolSpeed * (HuntMode ? huntSpeedFactor : 1f);
             waitTimer = 0f;
             GoToNextWaypoint();
         }
@@ -225,7 +227,7 @@ namespace Escape.Enemy
         void EnterChase()
         {
             Current = State.Chase;
-            agent.speed = chaseSpeed;
+            agent.speed = chaseSpeed * (HuntMode ? 1.06f : 1f);
             lostTimer = 0f;
         }
 
@@ -242,6 +244,7 @@ namespace Escape.Enemy
 
         void UpdatePatrol()
         {
+            if (HuntMode) { UpdateRoam(); return; }
             if (waypoints == null || waypoints.Length == 0) return;
             if (!HasArrived()) return;
 
@@ -294,8 +297,91 @@ namespace Escape.Enemy
             }
         }
 
-        // ---------- 유틸 ----------
+        // ---------- 추격 모드 (마지막 차단기 이후): 모든 층을 자유롭게 돌아다닌다 ----------
 
+        [Header("Hunt (마지막 차단기 이후)")]
+        [SerializeField] float huntSpeedFactor = 1.45f;     // 순찰이 훨씬 빨라진다
+        [SerializeField] float huntSenseFactor = 1.3f;      // 더 멀리서 보고 듣는다
+        [SerializeField] float stairChance = 0.55f;         // 목적지에 닿을 때마다 계단으로 층을 옮길 확률
+        [SerializeField] float towardPlayerBias = 0.4f;     // 층을 옮길 때 플레이어가 있는 층 쪽으로 갈 확률
+
+        StairPortal pendingPortal;
+
+        public bool HuntMode { get; private set; }
+
+        /// <summary>추격 모드로 바꾼다. 층 제한 없이 계단을 타고 건물 전체를 돌아다닌다.</summary>
+        public void SetHunt(bool on)
+        {
+            HuntMode = on;
+            if (agent == null) agent = GetComponent<NavMeshAgent>();
+            if (on && Current == State.Patrol && agent.isOnNavMesh)
+            {
+                agent.speed = patrolSpeed * huntSpeedFactor;
+                pendingPortal = null;
+                waitTimer = waypointWait;   // 바로 다음 목적지를 정한다
+            }
+        }
+
+        void UpdateRoam()
+        {
+            if (pendingPortal != null)
+            {
+                if (pendingPortal.exitPoint == null || pendingPortal.partner == null || pendingPortal.partner.exitPoint == null)
+                {
+                    pendingPortal = null;
+                    return;
+                }
+                if (Vector3.Distance(transform.position, pendingPortal.exitPoint.position) < 1.8f) UseStairs();
+                return;
+            }
+
+            if (!HasArrived()) return;
+
+            waitTimer += Time.deltaTime;
+            if (waitTimer < waypointWait) return;
+            waitTimer = 0f;
+
+            if (UnityEngine.Random.value < stairChance && TryChooseStairs()) return;
+
+            // 같은 층의 아무 방으로
+            int room = UnityEngine.Random.Range(0, TowerLayout.RoomsPerFloor);
+            agent.SetDestination(SnapToNavMesh(TowerLayout.RoomCenter(Floor, room)));
+        }
+
+        bool TryChooseStairs()
+        {
+            int myFloor = Floor;
+            int playerFloor = TowerLayout.FloorOf(player.position.y);
+
+            bool wantUp;
+            if (playerFloor != myFloor && UnityEngine.Random.value < towardPlayerBias) wantUp = playerFloor > myFloor;
+            else wantUp = UnityEngine.Random.value < 0.5f;
+
+            StairPortal best = null;
+            float bestDist = float.MaxValue;
+            foreach (var s in StairPortal.All)
+            {
+                if (s == null || s.floor != myFloor || s.up != wantUp || s.partner == null || s.exitPoint == null) continue;
+                float d = Vector3.Distance(transform.position, s.exitPoint.position);
+                if (d < bestDist) { bestDist = d; best = s; }
+            }
+            if (best == null) return false;   // 맨 위/맨 아래 층이라 그 방향 계단이 없다
+
+            pendingPortal = best;
+            agent.SetDestination(SnapToNavMesh(best.exitPoint.position));
+            return true;
+        }
+
+        void UseStairs()
+        {
+            var partner = pendingPortal.partner;
+            pendingPortal = null;
+            agent.Warp(SnapToNavMesh(partner.exitPoint.position));
+            // 도착한 층에서 다시 돌아다닌다
+            waitTimer = waypointWait;
+        }
+
+        // ---------- 유틸 ----------
         void GoToNextWaypoint()
         {
             if (waypoints == null || waypoints.Length == 0) return;

@@ -91,6 +91,23 @@ namespace Escape.Audio
             return Make("Metal", data);
         }
 
+        /// <summary>건물 전체에 울리는 경보. 두 음이 번갈아 울린다.</summary>
+        public static AudioClip Alarm()
+        {
+            float len = 4f;
+            var data = new float[(int)(Rate * len)];
+            float phase = 0f;
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float freq = (Mathf.FloorToInt(t * 2.5f) % 2 == 0) ? 620f : 860f;
+                phase += 2f * Mathf.PI * freq / Rate;
+                float env = Mathf.Clamp01(t / 0.1f) * Mathf.Clamp01((len - t) / 0.4f);
+                data[i] = Mathf.Sign(Mathf.Sin(phase)) * 0.22f * env + Mathf.Sin(phase) * 0.25f * env;
+            }
+            return Make("Alarm", data);
+        }
+
         /// <summary>손전등 스위치의 짧은 딸깍 소리.</summary>
         public static AudioClip Click()
         {

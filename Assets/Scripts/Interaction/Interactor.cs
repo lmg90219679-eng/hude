@@ -74,6 +74,7 @@ namespace Escape.Interaction
             foreach (var h in hits)
             {
                 if (h.collider.transform.IsChildOf(transform)) continue;
+                if (h.collider.GetComponent<InteractPassThrough>() != null) continue;
                 return h.collider.GetComponentInParent<IInteractable>();
             }
             return null;
