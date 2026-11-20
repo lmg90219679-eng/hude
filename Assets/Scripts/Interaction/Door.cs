@@ -5,15 +5,18 @@ using UnityEngine;
 namespace Escape.Interaction
 {
     /// <summary>
-    /// 여닫는 문. 열고 닫을 때 소음이 난다.
+    /// 좌우로 미끄러져 열리는 양문(자동문 같은 움직임). 두 짝(leafA, leafB)이 가운데에서 만나고, 열리면 벽 쪽으로 갈라진다.
+    /// 문은 모두 상호작용 키(F)로 열고 닫는다.
     /// lockKeyId가 있으면 잠긴 문이다: 그 문의 방 열쇠가 있으면 열 수 있고,
     /// 쇠막대가 있으면 강제로 열 수 있다 (쇠막대는 소모되고 소음이 크다).
     /// </summary>
     public class Door : MonoBehaviour, IInteractable
     {
-        [SerializeField] Transform hinge;
-        [SerializeField] float openAngle = 95f;
-        [SerializeField] float speed = 4f;
+        [SerializeField] Transform leafA;          // -slideAxis 쪽 문짝
+        [SerializeField] Transform leafB;          // +slideAxis 쪽 문짝
+        [SerializeField] Vector3 slideAxis = Vector3.right;
+        [SerializeField] float slideDistance = 1.5f;
+        [SerializeField] float speed = 2.2f;       // m/s
         [SerializeField] float noiseRadius = NoiseSystem.DoorRadius;
 
         [Header("잠금 (씬 빌더가 채운다)")]
@@ -29,14 +32,16 @@ namespace Escape.Interaction
 
         bool open;
         bool unlocked;
-        float angle;
+        float progress;                    // 0 = 닫힘, 1 = 활짝 열림
+        Vector3 startA, startB;
 
         public bool IsLocked => !string.IsNullOrEmpty(lockKeyId) && !unlocked;
         public bool IsOpen => open;
 
         void Awake()
         {
-            if (hinge == null) hinge = transform;
+            if (leafA != null) startA = leafA.localPosition;
+            if (leafB != null) startB = leafB.localPosition;
         }
 
         bool PowerBlocked => requiresPower && (PowerGrid.Instance == null || !PowerGrid.Instance.Complete);
@@ -93,9 +98,12 @@ namespace Escape.Interaction
                 leak.SetActive(!open && powered);
             }
 
-            float target = open ? openAngle : 0f;
-            angle = Mathf.MoveTowards(angle, target, speed * 60f * Time.deltaTime);
-            hinge.localRotation = Quaternion.Euler(0f, angle, 0f);
+            float rate = speed / Mathf.Max(0.1f, slideDistance);
+            progress = Mathf.MoveTowards(progress, open ? 1f : 0f, rate * Time.deltaTime);
+
+            Vector3 axis = slideAxis.normalized;
+            if (leafA != null) leafA.localPosition = startA - axis * (slideDistance * progress);
+            if (leafB != null) leafB.localPosition = startB + axis * (slideDistance * progress);
         }
     }
 }

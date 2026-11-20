@@ -105,7 +105,7 @@ namespace Escape.EditorTools
         // ---------- 재질 ----------
 
         const string StairTexDir = "Assets/Textures/Hospital";
-        static Material stairStepMat, stairWallMat, stairRailMat, stairDoorPlainMat;
+        static Material stairStepMat, stairWallMat, stairRailMat;
 
         static Material StairStepMaterial()
         {
@@ -135,16 +135,17 @@ namespace Escape.EditorTools
             return stairRailMat;
         }
 
-        /// <summary>계단 문: Varco 이미지(방화문 + STAIRS 표지판). 이미지의 어두운 가장자리는 잘라 쓴다.</summary>
-        static Material StairDoorMaterial(bool unused)
+        /// <summary>계단 문 한 짝: Varco 이미지(방화문 + STAIRS 표지판)의 왼쪽/오른쪽 절반. 이미지의 어두운 가장자리는 잘라 쓴다.</summary>
+        static Material StairDoorLeafMaterial(bool left)
         {
-            if (stairDoorPlainMat != null) return stairDoorPlainMat;
             const string tex = "Assets/Textures/Hospital/StairDoor.png";
-            if (AssetDatabase.LoadAssetAtPath<Texture2D>(tex) == null) return stairDoorPlainMat = doorMat;
-            stairDoorPlainMat = TextureMaterial("StairDoor", tex, new Vector2(0.621f, 0.915f), new Vector2(0.193f, 0.0625f), 0.2f);
-            stairDoorPlainMat.SetColor("_BaseColor", new Color(0.85f, 0.85f, 0.85f));
-            EditorUtility.SetDirty(stairDoorPlainMat);
-            return stairDoorPlainMat;
+            if (AssetDatabase.LoadAssetAtPath<Texture2D>(tex) == null) return doorMat;
+            float half = 0.621f * 0.5f;
+            var mat = TextureMaterial(left ? "StairDoorL" : "StairDoorR", tex, new Vector2(half, 0.915f),
+                new Vector2(0.193f + (left ? 0f : half), 0.0625f), 0.2f);
+            mat.SetColor("_BaseColor", new Color(0.85f, 0.85f, 0.85f));
+            EditorUtility.SetDirty(mat);
+            return mat;
         }
 
         // ---------- 계단통 ----------

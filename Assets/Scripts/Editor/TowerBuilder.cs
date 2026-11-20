@@ -37,7 +37,7 @@ namespace Escape.EditorTools
             public int treeOrder;
             public bool requiresPower;
             public float width;        // 0이면 기본 문 너비
-            public float openAngle;    // 0이면 기본 각도 (부호로 열리는 방향을 정한다)
+            public float perpSign;     // 문짝이 벽 어느 쪽 면에 붙는지 (+1 / -1, 0이면 +1)
         }
 
         static readonly List<DoorRequest> doorRequests = new List<DoorRequest>();
@@ -308,7 +308,7 @@ namespace Escape.EditorTools
                         along = ed.vertical ? Vector3.forward : Vector3.right,
                         kind = stairDoor ? DoorKind.Stair : kind.Value,
                         width = stairDoor ? StairDoorWidth : 0f,
-                        openAngle = e == EdgeStairWest ? 95f : (e == EdgeStairEast ? -95f : 0f),   // 계단 문은 복도 쪽으로 열린다
+                        perpSign = e == EdgeStairEast ? -1f : 1f,   // 계단 문은 복도 쪽 면에 붙는다
                         floor = floor, roomA = roomA, roomB = roomB,
                         keyId = kind == DoorKind.Locked ? $"{label}-{treeIndex + 1}" : null,
                         treeOrder = treeIndex,
@@ -350,31 +350,37 @@ namespace Escape.EditorTools
                 root.transform.position = req.center;
 
                 bool alongX = Mathf.Abs(req.along.x) > 0.5f;
-                var hinge = new GameObject("Hinge").transform;
-                hinge.SetParent(root.transform);
                 float doorW = req.width > 0f ? req.width : DoorWidth;
-                hinge.position = req.center - req.along * (doorW * 0.5f);
-
-                var panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                panel.name = "Panel";
-                panel.transform.SetParent(hinge);
-                panel.transform.position = req.center + Vector3.up * 1.3f;
-                panel.transform.localScale = alongX
-                    ? new Vector3(doorW, 2.6f, 0.1f)
-                    : new Vector3(0.1f, 2.6f, doorW);
-                panel.GetComponent<Renderer>().sharedMaterial =
-                    req.kind == DoorKind.Exit ? exitMat : req.kind == DoorKind.Stair ? StairDoorMaterial(true) : req.kind == DoorKind.Locked ? lockedDoorMat : req.kind == DoorKind.Secret ? wallMat : doorMat;
+                Material mat = req.kind == DoorKind.Exit ? exitMat : req.kind == DoorKind.Locked ? lockedDoorMat : req.kind == DoorKind.Secret ? wallMat : doorMat;
+                // 벽 면과 같은 쪽에 붙어서, 열리면 벽을 따라 옆으로 미끄러진다
+                Vector3 perp = (alongX ? Vector3.forward : Vector3.right) * (req.perpSign == 0f ? 1f : req.perpSign);
+                Vector3 leafOffset = perp * (WallThick * 0.5f + 0.05f);
 
                 if (req.kind == DoorKind.Exit)
                 {
+                    // 정문: 한 장짜리 문 (열리지 않는다. 열쇠가 있으면 탈출)
+                    var single = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    single.name = "Panel";
+                    single.transform.SetParent(root.transform);
+                    single.transform.position = req.center + Vector3.up * 1.3f;
+                    single.transform.localScale = alongX ? new Vector3(doorW, 2.6f, 0.1f) : new Vector3(0.1f, 2.6f, doorW);
+                    single.GetComponent<Renderer>().sharedMaterial = mat;
                     root.AddComponent<ExitDoor>();
                     continue;
                 }
 
+                // 두 짝이 가운데에서 만나고, 열리면 좌우 벽 쪽으로 갈라져 미끄러진다
+                var leafA = MakeLeaf(root.transform, req, -1f, doorW, alongX, leafOffset,
+                    req.kind == DoorKind.Stair ? StairDoorLeafMaterial(true) : mat);
+                var leafB = MakeLeaf(root.transform, req, +1f, doorW, alongX, leafOffset,
+                    req.kind == DoorKind.Stair ? StairDoorLeafMaterial(false) : mat);
+
                 var door = root.AddComponent<Door>();
                 var so = new SerializedObject(door);
-                so.FindProperty("hinge").objectReferenceValue = hinge;
-                if (req.openAngle != 0f) so.FindProperty("openAngle").floatValue = req.openAngle;
+                so.FindProperty("leafA").objectReferenceValue = leafA;
+                so.FindProperty("leafB").objectReferenceValue = leafB;
+                so.FindProperty("slideAxis").vector3Value = req.along;
+                so.FindProperty("slideDistance").floatValue = doorW * 0.5f;
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 door.floor = req.floor;
@@ -387,6 +393,18 @@ namespace Escape.EditorTools
                 door.requiresPower = req.requiresPower;
                 EditorUtility.SetDirty(door);
             }
+        }
+
+        static Transform MakeLeaf(Transform root, DoorRequest req, float side, float doorW, bool alongX, Vector3 offset, Material mat)
+        {
+            float w = doorW * 0.5f;
+            var leaf = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            leaf.name = side < 0f ? "LeafA" : "LeafB";
+            leaf.transform.SetParent(root);
+            leaf.transform.position = req.center + req.along * (side * w * 0.5f) + offset + Vector3.up * 1.3f;
+            leaf.transform.localScale = alongX ? new Vector3(w, 2.6f, 0.08f) : new Vector3(0.08f, 2.6f, w);
+            leaf.GetComponent<Renderer>().sharedMaterial = mat;
+            return leaf.transform;
         }
 
         // ---------- 숨겨진 문의 빛 단서 ----------

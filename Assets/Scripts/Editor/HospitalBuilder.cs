@@ -149,11 +149,11 @@ namespace Escape.EditorTools
             wallMat = TextureMaterial("HospitalWallMid", HospitalTexDir + "/WallPaint.png", new Vector2(2f, 1f), Vector2.zero, 0.1f);
             wallLongMat = TextureMaterial("HospitalWallLong", HospitalTexDir + "/WallPaint.png", new Vector2(3f, 1f), Vector2.zero, 0.1f);
 
-            // 방문: 문틈이 3m라서 두 짝이 나란히 있는 양문처럼 보이게 가로로 두 번 반복한다
+            // 방문: 두 짝이 좌우로 갈라지는 미닫이 양문이라 짝마다 이미지 한 장
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(HospitalTexDir + "/DoorRoom.png") != null)
-                doorMat = TextureMaterial("HospitalDoor", HospitalTexDir + "/DoorRoom.png", new Vector2(2f, 1f), Vector2.zero, 0.2f);
+                doorMat = TextureMaterial("HospitalDoor", HospitalTexDir + "/DoorRoom.png", new Vector2(1f, 1f), Vector2.zero, 0.2f);
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(HospitalTexDir + "/DoorLocked.png") != null)
-                lockedDoorMat = TextureMaterial("HospitalDoorLocked", HospitalTexDir + "/DoorLocked.png", new Vector2(2f, 1f), Vector2.zero, 0.25f);
+                lockedDoorMat = TextureMaterial("HospitalDoorLocked", HospitalTexDir + "/DoorLocked.png", new Vector2(1f, 1f), Vector2.zero, 0.25f);
         }
 
         static Material WallMaterialFor(float length)
