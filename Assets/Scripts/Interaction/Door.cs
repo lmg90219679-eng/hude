@@ -5,18 +5,26 @@ using UnityEngine;
 namespace Escape.Interaction
 {
     /// <summary>
-    /// 좌우로 미끄러져 열리는 양문(자동문 같은 움직임). 두 짝(leafA, leafB)이 가운데에서 만나고, 열리면 벽 쪽으로 갈라진다.
+    /// 문 한 짝. 두 가지 방식이 있다.
+    /// - 미닫이(leaf): 문짝이 벽 속으로 미끄러져 들어가며 열린다 (일반 문, 숨겨진 문).
+    /// - 여닫이(hinge): 경첩을 축으로 문짝이 돌아서 열린다 (계단 비상구).
     /// 문은 모두 상호작용 키(F)로 열고 닫는다.
     /// lockKeyId가 있으면 잠긴 문이다: 그 문의 방 열쇠가 있으면 열 수 있고,
     /// 쇠막대가 있으면 강제로 열 수 있다 (쇠막대는 소모되고 소음이 크다).
     /// </summary>
     public class Door : MonoBehaviour, IInteractable
     {
-        [SerializeField] Transform leafA;          // -slideAxis 쪽 문짝
-        [SerializeField] Transform leafB;          // +slideAxis 쪽 문짝
-        [SerializeField] Vector3 slideAxis = Vector3.right;
-        [SerializeField] float slideDistance = 1.5f;
-        [SerializeField] float speed = 2.2f;       // m/s
+        [Header("미닫이")]
+        [SerializeField] Transform leaf;
+        [SerializeField] Vector3 slideDir = Vector3.right;   // 열릴 때 문짝이 움직이는 방향 (벽을 따라)
+        [SerializeField] float slideDistance = 1.9f;
+        [SerializeField] float slideSpeed = 2.2f;            // m/s
+
+        [Header("여닫이")]
+        [SerializeField] Transform hinge;
+        [SerializeField] float openAngle = 95f;              // 부호로 열리는 방향이 정해진다
+        [SerializeField] float swingSpeed = 3.5f;            // 초당 배속 (도 = 이 값 x 60)
+
         [SerializeField] float noiseRadius = NoiseSystem.DoorRadius;
 
         [Header("잠금 (씬 빌더가 채운다)")]
@@ -32,16 +40,16 @@ namespace Escape.Interaction
 
         bool open;
         bool unlocked;
-        float progress;                    // 0 = 닫힘, 1 = 활짝 열림
-        Vector3 startA, startB;
+        float slideProgress;               // 0 = 닫힘, 1 = 활짝 열림 (미닫이)
+        float angle;                       // 여닫이
+        Vector3 leafStart;
 
         public bool IsLocked => !string.IsNullOrEmpty(lockKeyId) && !unlocked;
         public bool IsOpen => open;
 
         void Awake()
         {
-            if (leafA != null) startA = leafA.localPosition;
-            if (leafB != null) startB = leafB.localPosition;
+            if (leaf != null) leafStart = leaf.localPosition;
         }
 
         bool PowerBlocked => requiresPower && (PowerGrid.Instance == null || !PowerGrid.Instance.Complete);
@@ -98,12 +106,19 @@ namespace Escape.Interaction
                 leak.SetActive(!open && powered);
             }
 
-            float rate = speed / Mathf.Max(0.1f, slideDistance);
-            progress = Mathf.MoveTowards(progress, open ? 1f : 0f, rate * Time.deltaTime);
+            if (hinge != null)
+            {
+                float target = open ? openAngle : 0f;
+                angle = Mathf.MoveTowards(angle, target, swingSpeed * 60f * Time.deltaTime);
+                hinge.localRotation = Quaternion.Euler(0f, angle, 0f);
+            }
 
-            Vector3 axis = slideAxis.normalized;
-            if (leafA != null) leafA.localPosition = startA - axis * (slideDistance * progress);
-            if (leafB != null) leafB.localPosition = startB + axis * (slideDistance * progress);
+            if (leaf != null)
+            {
+                float rate = slideSpeed / Mathf.Max(0.1f, slideDistance);
+                slideProgress = Mathf.MoveTowards(slideProgress, open ? 1f : 0f, rate * Time.deltaTime);
+                leaf.localPosition = leafStart + slideDir.normalized * (slideDistance * slideProgress);
+            }
         }
     }
 }

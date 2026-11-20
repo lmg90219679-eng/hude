@@ -38,9 +38,9 @@ namespace Escape.EditorTools
         }
 
         /// <summary>계단 홀에는 소품을 놓지 않는다.</summary>
-        static bool AnchorUsable(int room, string anchorName)
+        static bool AnchorUsable(int floor, int room, string anchorName)
         {
-            if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) return false;   // 계단통이 차지한다
+            if ((room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) && HallHasStairs(floor, room)) return false;   // 계단통이 차지한다
             return true;
         }
 
@@ -190,7 +190,7 @@ namespace Escape.EditorTools
         {
             if (!System.IO.File.Exists($"{PropTools.PropsDir}/{model}/{model}.fbx")) return false;
             if (!PropSpecs.TryGetValue(model, out var spec)) return false;
-            if (!AnchorUsable(room, anchorName)) return false;
+            if (!AnchorUsable(floor, room, anchorName)) return false;
             var anchor = ResolveAnchor(anchorName, room);
 
             Vector3 center = TowerLayout.RoomCenter(floor, room);

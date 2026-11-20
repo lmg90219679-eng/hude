@@ -29,7 +29,7 @@ namespace Escape.EditorTools
         const int Grid = 3;
         const float WallHeight = 3f;
         const float WallThick = 0.3f;
-        const float DoorWidth = 3f;
+        const float DoorWidth = 2f;
 
         static Material floorMat, wallMat, chaserMat, woodMat, wardrobeMat, doorMat, lockedDoorMat, exitMat, boxMat, stairUpMat, stairDownMat, drawerMat, metalMat, metalDrawerMat;
 

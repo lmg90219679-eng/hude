@@ -37,7 +37,7 @@ namespace Escape.EditorTools
             public int treeOrder;
             public bool requiresPower;
             public float width;        // 0이면 기본 문 너비
-            public float perpSign;     // 문짝이 벽 어느 쪽 면에 붙는지 (+1 / -1, 0이면 +1)
+            public float openAngle;    // 여닫이 문(계단 비상구)의 열리는 각도 (부호로 방향)
         }
 
         static readonly List<DoorRequest> doorRequests = new List<DoorRequest>();
@@ -302,7 +302,8 @@ namespace Escape.EditorTools
                     if (kind == null) continue;
 
                     var ed = Edges[e];
-                    bool stairDoor = e == EdgeStairWest || e == EdgeStairEast;
+                    int hallRoom = e == EdgeStairWest ? TowerLayout.WestStairRoom : TowerLayout.EastStairRoom;
+                    bool stairDoor = (e == EdgeStairWest || e == EdgeStairEast) && HallHasStairs(floor, hallRoom);   // 계단이 없는 층의 홀은 일반 문
                     gaps.Add((ed.vertical ? ed.z : ed.x, stairDoor ? StairDoorWidth : DoorWidth));
 
                     int treeIndex = plan.Tree.FindIndex(t => t.edge == e);
@@ -315,7 +316,7 @@ namespace Escape.EditorTools
                         along = ed.vertical ? Vector3.forward : Vector3.right,
                         kind = stairDoor ? DoorKind.Stair : kind.Value,
                         width = stairDoor ? StairDoorWidth : 0f,
-                        perpSign = e == EdgeStairEast ? -1f : 1f,   // 계단 문은 복도 쪽 면에 붙는다
+                        openAngle = e == EdgeStairWest ? 95f : -95f,   // 계단 비상구는 복도 쪽으로 열린다
                         floor = floor, roomA = roomA, roomB = roomB,
                         keyId = kind == DoorKind.Locked ? $"{label}-{treeIndex + 1}" : null,
                         treeOrder = treeIndex,
@@ -358,10 +359,9 @@ namespace Escape.EditorTools
 
                 bool alongX = Mathf.Abs(req.along.x) > 0.5f;
                 float doorW = req.width > 0f ? req.width : DoorWidth;
-                Material mat = req.kind == DoorKind.Exit ? exitMat : req.kind == DoorKind.Locked ? lockedDoorMat : req.kind == DoorKind.Secret ? wallMat : doorMat;
-                // 벽 면과 같은 쪽에 붙어서, 열리면 벽을 따라 옆으로 미끄러진다
-                Vector3 perp = (alongX ? Vector3.forward : Vector3.right) * (req.perpSign == 0f ? 1f : req.perpSign);
-                Vector3 leafOffset = perp * (WallThick * 0.5f + 0.05f);
+                Material mat = req.kind == DoorKind.Exit ? exitMat : req.kind == DoorKind.Stair ? StairDoorMaterial(true)
+                    : req.kind == DoorKind.Locked ? lockedDoorMat : req.kind == DoorKind.Secret ? wallMat : doorMat;
+                Vector3 panelSize = alongX ? new Vector3(doorW, 2.6f, 0.1f) : new Vector3(0.1f, 2.6f, doorW);
 
                 if (req.kind == DoorKind.Exit)
                 {
@@ -370,24 +370,44 @@ namespace Escape.EditorTools
                     single.name = "Panel";
                     single.transform.SetParent(root.transform);
                     single.transform.position = req.center + Vector3.up * 1.3f;
-                    single.transform.localScale = alongX ? new Vector3(doorW, 2.6f, 0.1f) : new Vector3(0.1f, 2.6f, doorW);
+                    single.transform.localScale = panelSize;
                     single.GetComponent<Renderer>().sharedMaterial = mat;
                     root.AddComponent<ExitDoor>();
                     continue;
                 }
 
-                // 두 짝이 가운데에서 만나고, 열리면 좌우 벽 쪽으로 갈라져 미끄러진다
-                var leafA = MakeLeaf(root.transform, req, -1f, doorW, alongX, leafOffset,
-                    req.kind == DoorKind.Stair ? StairDoorLeafMaterial(true) : mat);
-                var leafB = MakeLeaf(root.transform, req, +1f, doorW, alongX, leafOffset,
-                    req.kind == DoorKind.Stair ? StairDoorLeafMaterial(false) : mat);
-
                 var door = root.AddComponent<Door>();
                 var so = new SerializedObject(door);
-                so.FindProperty("leafA").objectReferenceValue = leafA;
-                so.FindProperty("leafB").objectReferenceValue = leafB;
-                so.FindProperty("slideAxis").vector3Value = req.along;
-                so.FindProperty("slideDistance").floatValue = doorW * 0.5f;
+
+                if (req.kind == DoorKind.Stair)
+                {
+                    // 계단 비상구: 한 짝, 경첩을 축으로 돌아서 열린다
+                    var hinge = new GameObject("Hinge").transform;
+                    hinge.SetParent(root.transform);
+                    hinge.position = req.center - req.along * (doorW * 0.5f);
+                    var panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    panel.name = "Panel";
+                    panel.transform.SetParent(hinge);
+                    panel.transform.position = req.center + Vector3.up * 1.3f;
+                    panel.transform.localScale = panelSize;
+                    panel.GetComponent<Renderer>().sharedMaterial = mat;
+                    so.FindProperty("hinge").objectReferenceValue = hinge;
+                    so.FindProperty("openAngle").floatValue = req.openAngle != 0f ? req.openAngle : 95f;
+                }
+                else
+                {
+                    // 일반 문: 한 짝이 벽 속(문틈과 같은 두께 안)으로 미끄러져 들어가며 열린다
+                    var leaf = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    leaf.name = "Leaf";
+                    leaf.transform.SetParent(root.transform);
+                    leaf.transform.position = req.center + Vector3.up * 1.3f;
+                    leaf.transform.localScale = alongX ? new Vector3(doorW, 2.6f, 0.08f) : new Vector3(0.08f, 2.6f, doorW);
+                    leaf.GetComponent<Renderer>().sharedMaterial = mat;
+                    float dir = SlideDirection(req);
+                    so.FindProperty("leaf").objectReferenceValue = leaf.transform;
+                    so.FindProperty("slideDir").vector3Value = req.along * dir;
+                    so.FindProperty("slideDistance").floatValue = doorW * 0.95f;
+                }
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 door.floor = req.floor;
@@ -402,16 +422,21 @@ namespace Escape.EditorTools
             }
         }
 
-        static Transform MakeLeaf(Transform root, DoorRequest req, float side, float doorW, bool alongX, Vector3 offset, Material mat)
+        /// <summary>문이 열릴 때 벽 속으로 들어갈 방향(+1/-1). 두 방이 공유하는 벽 구간 중 더 긴 쪽으로 간다.</summary>
+        static float SlideDirection(DoorRequest req)
         {
-            float w = doorW * 0.5f;
-            var leaf = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            leaf.name = side < 0f ? "LeafA" : "LeafB";
-            leaf.transform.SetParent(root);
-            leaf.transform.position = req.center + req.along * (side * w * 0.5f) + offset + Vector3.up * 1.3f;
-            leaf.transform.localScale = alongX ? new Vector3(w, 2.6f, 0.08f) : new Vector3(0.08f, 2.6f, w);
-            leaf.GetComponent<Renderer>().sharedMaterial = mat;
-            return leaf.transform;
+            bool alongX = Mathf.Abs(req.along.x) > 0.5f;
+            float c = alongX ? req.center.x : req.center.z;
+            float lo = 0f, hi = TowerLayout.Span;
+            foreach (int room in new[] { req.roomA, req.roomB })
+            {
+                Rect r = TowerLayout.RoomRect(room);
+                float a = alongX ? r.xMin : r.yMin, b = alongX ? r.xMax : r.yMax;
+                lo = Mathf.Max(lo, a);
+                hi = Mathf.Min(hi, b);
+            }
+            if (hi <= lo) { lo = 0f; hi = TowerLayout.Span; }
+            return (hi - c) >= (c - lo) ? 1f : -1f;
         }
 
         // ---------- 숨겨진 문의 빛 단서 ----------
@@ -509,14 +534,14 @@ namespace Escape.EditorTools
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
                 Rect r = TowerLayout.RoomRect(room);
-                bool stairRoom = IsStairRoom(room);
+                bool stairRoom = IsStairRoom(room) && HallHasStairs(floor, room);   // 계단이 닿는 홀만 가구를 비운다
                 var avoid = new List<(Vector2 p, float r)>(floorAvoid);
 
                 // 소품이 놓일 자리 (HospitalBuilder)
                 foreach (var entry in RoomProps[floor][room])
                 {
                     string anchorName = entry.Split(':')[1];
-                    if (!AnchorUsable(room, anchorName)) continue;
+                    if (!AnchorUsable(floor, room, anchorName)) continue;
                     var a = ResolveAnchor(anchorName, room);
                     avoid.Add((new Vector2(r.center.x + a.pos.x, r.center.y + a.pos.y), 1.7f));
                 }
@@ -708,26 +733,20 @@ namespace Escape.EditorTools
         /// </summary>
         static void BuildStairs(Transform parent)
         {
-            var up = new Dictionary<(int floor, int room), StairPortal>();
-            var down = new Dictionary<(int floor, int room), StairPortal>();
-
-            for (int f = 0; f < TowerLayout.Floors; f++)
+            // 계단통마다 자기가 잇는 층 사이(pair)에만 입구가 있다. 위로 가는 입구와 위층의 내려가는 입구가 짝이다.
+            foreach (bool west in new[] { true, false })
             {
-                foreach (int room in new[] { TowerLayout.WestStairRoom, TowerLayout.EastStairRoom })
+                int room = west ? TowerLayout.WestStairRoom : TowerLayout.EastStairRoom;
+                for (int n = 0; n < TowerLayout.Floors - 1; n++)
                 {
-                    if (f < TowerLayout.Floors - 1) up[(f, room)] = MakePortal(parent, f, room, true);
-                    if (f > 0) down[(f, room)] = MakePortal(parent, f, room, false);
+                    if (!HallHasPair(west, n)) continue;
+                    var up = MakePortal(parent, n, room, true);
+                    var down = MakePortal(parent, n + 1, room, false);
+                    up.partner = down;
+                    down.partner = up;
+                    EditorUtility.SetDirty(up);
+                    EditorUtility.SetDirty(down);
                 }
-            }
-
-            foreach (var kv in up)
-            {
-                var (f, room) = kv.Key;
-                var upper = down[(f + 1, room)];
-                kv.Value.partner = upper;
-                upper.partner = kv.Value;
-                EditorUtility.SetDirty(kv.Value);
-                EditorUtility.SetDirty(upper);
             }
         }
 

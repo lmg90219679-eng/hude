@@ -42,29 +42,39 @@ namespace Escape.EditorTools
         static float LaneDownZ => (HallZ0 + HallZc - LaneGap) * 0.5f;   // 내려가는 줄 중심 (남쪽)
         static float LaneWidth => HallZ1 - (HallZc + LaneGap);
 
+        // ---------- 어느 계단통이 어느 층 사이를 잇는가 ----------
+        // 올라가는 곳과 내려가는 곳이 같은 자리에 있지 않도록 계단통이 번갈아 층을 잇는다.
+        //   서쪽: 지하2-지하1, 1층-2층   /   동쪽: 지하1-1층, 2층-3층
+        // 그래서 어떤 층에서든 위로 가는 계단과 아래로 가는 계단은 복도 반대쪽 끝에 있다.
+
+        /// <summary>이 계단통이 pair번째 층 사이(pair층 -> pair+1층)를 잇는가.</summary>
+        static bool HallHasPair(bool west, int pair) =>
+            pair >= 0 && pair < TowerLayout.Floors - 1 && (pair % 2 == 0) == west;
+
+        /// <summary>이 층의 계단 홀에 계단이 있는가 (위로 가는 계단이나 아래에서 올라오는 계단 중 하나라도).</summary>
+        static bool HallHasStairs(int floor, int room)
+        {
+            bool west = room == TowerLayout.WestStairRoom;
+            return HallHasPair(west, floor) || HallHasPair(west, floor - 1);
+        }
+
         // ---------- 바닥판 구멍 ----------
 
-        /// <summary>해당 층 바닥판에 뚫는 구멍들 (x, y=z, width, height). 맨 아래층은 구멍이 없다.</summary>
+        /// <summary>해당 층 바닥판에 뚫는 구멍들 (x, y=z, width, height). 아래층에서 이 층으로 올라오는 계단이 있는 홀만 뚫는다.</summary>
         static List<Rect> SlabHoles(int floor)
         {
             var holes = new List<Rect>();
-            if (floor <= 0) return holes;
             foreach (bool west in new[] { true, false })
             {
+                if (!HallHasPair(west, floor - 1)) continue;
                 var h = HallOf(west);
                 float xa = Mathf.Min(h.xl, h.xw), xb = Mathf.Max(h.xl, h.xw);
-                if (floor < TowerLayout.Floors - 1)
-                {
-                    holes.Add(new Rect(xa, HallZ0, xb - xa, HallZ1 - HallZ0));
-                }
-                else
-                {
-                    // 맨 위층: 위로 올라가는 계단이 없다. 내려가는 줄과 가운데는 뚫고, 올라가는 줄은 안쪽 절반만 뚫는다 (나머지는 막고 벽을 세운다).
-                    holes.Add(new Rect(xa, HallZ0, xb - xa, HallZc + LaneGap - HallZ0));
-                    float cut = west ? TopCutWest : 24f - TopCutWest;
-                    float ua = Mathf.Min(h.xw, cut), ub = Mathf.Max(h.xw, cut);
-                    holes.Add(new Rect(ua, HallZc + LaneGap, ub - ua, HallZ1 - (HallZc + LaneGap)));
-                }
+                // 내려가는 줄과 가운데는 끝까지 뚫는다
+                holes.Add(new Rect(xa, HallZ0, xb - xa, HallZc + LaneGap - HallZ0));
+                // 올라가는 줄은 안쪽 일부만 뚫는다 (이 층에서 더 위로 가는 계단이 없다. 나머지는 막고 벽을 세운다)
+                float cut = west ? TopCutWest : 24f - TopCutWest;
+                float ua = Mathf.Min(h.xw, cut), ub = Mathf.Max(h.xw, cut);
+                holes.Add(new Rect(ua, HallZc + LaneGap, ub - ua, HallZ1 - (HallZc + LaneGap)));
             }
             return holes;
         }
@@ -135,14 +145,12 @@ namespace Escape.EditorTools
             return stairRailMat;
         }
 
-        /// <summary>계단 문 한 짝: Varco 이미지(방화문 + STAIRS 표지판)의 왼쪽/오른쪽 절반. 이미지의 어두운 가장자리는 잘라 쓴다.</summary>
-        static Material StairDoorLeafMaterial(bool left)
+        /// <summary>계단 비상구 문: Varco 이미지(방화문 + STAIRS 표지판). 이미지의 어두운 가장자리는 잘라 쓴다.</summary>
+        static Material StairDoorMaterial(bool unused)
         {
             const string tex = "Assets/Textures/Hospital/StairDoor.png";
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(tex) == null) return doorMat;
-            float half = 0.621f * 0.5f;
-            var mat = TextureMaterial(left ? "StairDoorL" : "StairDoorR", tex, new Vector2(half, 0.915f),
-                new Vector2(0.193f + (left ? 0f : half), 0.0625f), 0.2f);
+            var mat = TextureMaterial("StairDoor", tex, new Vector2(0.621f, 0.915f), new Vector2(0.193f, 0.0625f), 0.2f);
             mat.SetColor("_BaseColor", new Color(0.85f, 0.85f, 0.85f));
             EditorUtility.SetDirty(mat);
             return mat;
@@ -158,28 +166,27 @@ namespace Escape.EditorTools
             var wallM = StairWallMaterial();
             var railM = StairRailMaterial();
 
-            float yBottom = TowerLayout.FloorY(0);
-            float yTop = TowerLayout.FloorY(TowerLayout.Floors - 1) + WallHeight;
-            int pairs = TowerLayout.Floors - 1;
-
             foreach (bool west in new[] { true, false })
             {
                 var h = HallOf(west);
                 var wr = new GameObject(west ? "Stairwell_West" : "Stairwell_East").transform;
                 wr.SetParent(root);
                 float xmid = (h.xl + h.xw) * 0.5f, xlen = Mathf.Abs(h.xl - h.xw);
-
-                // 가운데 벽: 두 줄 사이를 막아 계단 옆으로 떨어지지 않게 한다 (맨 아래부터 맨 위까지). 반층 참에서는 두 줄이 이어지므로 계단 구간까지만 세운다.
                 float runLen = StepsPerFlight * Tread;
-                Box(wr, "CenterWall", new Vector3(h.xl + h.d * runLen * 0.5f, (yBottom + yTop) * 0.5f, HallZc), new Vector3(runLen, yTop - yBottom, LaneGap * 2f), wallM);
 
-                for (int n = 0; n < pairs; n++)
+                for (int n = 0; n < TowerLayout.Floors - 1; n++)
                 {
+                    if (!HallHasPair(west, n)) continue;
                     float y0 = TowerLayout.FloorY(n);
                     float mid = y0 + FlightRise;
-                    float xm = h.xl + h.d * StepsPerFlight * Tread;   // 반층 참이 시작되는 x
+                    float y1 = TowerLayout.FloorY(n + 1);
+                    float xm = h.xl + h.d * runLen;   // 반층 참이 시작되는 x
 
-                    // 1) 올라가는 줄 (북쪽): 승강장 -> 반층 참, 올라갈수록 승강장에서 멀어진다
+                    // 가운데 벽: 두 줄 사이를 막아 계단 옆으로 떨어지지 않게 한다. 반층 참에서는 두 줄이 이어지므로 계단 구간까지만 세운다.
+                    Box(wr, "CenterWall", new Vector3(h.xl + h.d * runLen * 0.5f, (y0 + y1 + WallHeight) * 0.5f, HallZc),
+                        new Vector3(runLen, y1 + WallHeight - y0, LaneGap * 2f), wallM);
+
+                    // 1) 올라가는 줄 (북쪽): 승강장 -> 반층 참
                     for (int i = 0; i < StepsPerFlight; i++)
                     {
                         float xa = h.xl + h.d * i * Tread, xb = h.xl + h.d * (i + 1) * Tread;
@@ -204,27 +211,24 @@ namespace Escape.EditorTools
 
                     // 난간: 가운데 벽 쪽에 줄마다 하나씩
                     Rail(wr, new Vector3(h.xl, y0 + 0.9f, HallZc + LaneGap + 0.08f), new Vector3(xm, mid + 0.9f, HallZc + LaneGap + 0.08f), railM);
-                    Rail(wr, new Vector3(xm, mid + 0.9f, HallZc - LaneGap - 0.08f), new Vector3(h.xl, y0 + 2f * FlightRise + 0.9f, HallZc - LaneGap - 0.08f), railM);
-                }
+                    Rail(wr, new Vector3(xm, mid + 0.9f, HallZc - LaneGap - 0.08f), new Vector3(h.xl, y1 + 0.9f, HallZc - LaneGap - 0.08f), railM);
 
-                // 바닥판 구멍 둘레를 막는 띠: 층 사이 1m 틈으로 바깥이 보이지 않게 한다
-                for (int f = 1; f < TowerLayout.Floors; f++)
-                {
-                    float yb = TowerLayout.FloorY(f) - 0.5f;
+                    // 위층 바닥판 구멍 둘레를 막는 띠: 층 사이 1m 틈으로 바깥이 보이지 않게 한다
+                    float yb = y1 - 0.5f;
                     float farX = west ? 0f : 24f;
                     Box(wr, "ShaftBand", new Vector3(farX, yb, HallZc), new Vector3(WallThick, 1f, HallZ1 - HallZ0 + WallThick * 2f), wallM);
                     Box(wr, "ShaftBand", new Vector3(xmid, yb, 10f), new Vector3(xlen, 1f, WallThick), wallM);
                     Box(wr, "ShaftBand", new Vector3(xmid, yb, 14f), new Vector3(xlen, 1f, WallThick), wallM);
+
+                    // 위층 승강장: 올라가는 줄을 막는 벽 (아래 계단의 윗부분 위로 떨어지지 않게)
+                    float cutX = west ? TopCutWest : 24f - TopCutWest;
+                    Box(wr, "TopBlock", new Vector3(cutX, y1 + WallHeight * 0.5f, LaneUpZ), new Vector3(0.3f, WallHeight, LaneWidth), wallM);
                 }
 
-                // 맨 위층: 올라가는 줄을 막는 벽 (아래 계단의 윗부분 위로 떨어지지 않게)
-                float cutX = west ? TopCutWest : 24f - TopCutWest;
-                float yTopFloor = TowerLayout.FloorY(TowerLayout.Floors - 1);
-                Box(wr, "TopBlock", new Vector3(cutX, yTopFloor + WallHeight * 0.5f, LaneUpZ), new Vector3(0.3f, WallHeight, LaneWidth), wallM);
-
-                // 층마다 승강장에 희미한 비상등 (어둠 속에서 계단 홀을 알아볼 수 있게)
+                // 계단이 닿는 층의 승강장에 희미한 비상등 (어둠 속에서 계단 홀을 알아볼 수 있게)
                 for (int f = 0; f < TowerLayout.Floors; f++)
                 {
+                    if (!HallHasStairs(f, west ? TowerLayout.WestStairRoom : TowerLayout.EastStairRoom)) continue;
                     var lg = new GameObject($"StairLamp_{TowerLayout.ShortLabel(f)}").AddComponent<Light>();
                     lg.transform.SetParent(wr);
                     lg.transform.position = new Vector3(h.xl - h.d * 0.2f, TowerLayout.FloorY(f) + 2.5f, HallZc);

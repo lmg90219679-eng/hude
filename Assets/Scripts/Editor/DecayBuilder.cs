@@ -90,7 +90,7 @@ namespace Escape.EditorTools
             var tileOld = DecayMat("FloorTileOld", "FloorTileOld.png", Vector2.one, 0.3f);
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
-                if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) continue;
+                if ((room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) && HallHasStairs(floor, room)) continue;
                 Material m;
                 float tile = 4f;
                 if (floor <= 1) { m = tileOld; tile = 3f; }
@@ -105,7 +105,9 @@ namespace Escape.EditorTools
             // 계단 홀 승강장
             if (debris != null)
             {
+                if (HallHasStairs(floor, TowerLayout.WestStairRoom))
                 FlatQuad(root, "Landing_W", new Rect(4.35f, HallZ0, 1.5f, HallZ1 - HallZ0), y + 0.012f, true, 4f, debris);
+                if (HallHasStairs(floor, TowerLayout.EastStairRoom))
                 FlatQuad(root, "Landing_E", new Rect(18.15f, HallZ0, 1.5f, HallZ1 - HallZ0), y + 0.012f, true, 4f, debris);
             }
 
