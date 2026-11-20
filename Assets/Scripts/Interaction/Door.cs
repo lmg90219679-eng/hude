@@ -22,6 +22,7 @@ namespace Escape.Interaction
         public int roomA;                  // 문이 이어주는 두 방 (roomB가 새로 열리는 쪽)
         public int roomB;
         public int treeOrder = -1;         // 층 안에서 열리는 순서 (열쇠가 풀리는 순서)
+        public bool requiresPower;         // 발전기(차단기 3개)가 복구돼야 열린다 (엘리베이터 홀의 숨겨진 문)
         public bool secret;                // 숨겨진 문: 벽처럼 보이고 지도에 나오지 않는다
 
         bool open;
@@ -36,8 +37,11 @@ namespace Escape.Interaction
             if (hinge == null) hinge = transform;
         }
 
+        bool PowerBlocked => requiresPower && (PowerGrid.Instance == null || !PowerGrid.Instance.Complete);
+
         public string GetPrompt(Interactor who)
         {
+            if (PowerBlocked) return null;
             if (IsLocked)
             {
                 if (who.Inventory.HasRoomKey(lockKeyId)) return "E: 열쇠로 문을 연다";
@@ -50,6 +54,7 @@ namespace Escape.Interaction
 
         public void Interact(Interactor who)
         {
+            if (PowerBlocked) return;
             if (IsLocked)
             {
                 if (who.Inventory.HasRoomKey(lockKeyId))

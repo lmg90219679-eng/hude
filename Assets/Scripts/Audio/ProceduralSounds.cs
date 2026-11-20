@@ -91,6 +91,60 @@ namespace Escape.Audio
             return Make("Metal", data);
         }
 
+        /// <summary>엘리베이터 도착 종소리. 맑지만 낡아서 약간 어긋난 소리.</summary>
+        public static AudioClip Ding()
+        {
+            float len = 1.8f;
+            var data = new float[(int)(Rate * len)];
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float s = Mathf.Sin(2f * Mathf.PI * 880f * t) * Mathf.Exp(-t * 2.8f)
+                        + 0.5f * Mathf.Sin(2f * Mathf.PI * 1318f * t) * Mathf.Exp(-t * 3.6f)
+                        + 0.25f * Mathf.Sin(2f * Mathf.PI * 2230f * t) * Mathf.Exp(-t * 5f);
+                data[i] = s * 0.5f;
+            }
+            return Make("Ding", data);
+        }
+
+        /// <summary>엘리베이터가 움직이는 낮은 윙윙 소리 (이음매 없이 반복).</summary>
+        public static AudioClip ElevatorHum()
+        {
+            float len = 4f;
+            var data = new float[(int)(Rate * len)];
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float s = Mathf.Sin(2f * Mathf.PI * 55f * t) + 0.6f * Mathf.Sin(2f * Mathf.PI * 110f * t) + 0.25f * Mathf.Sin(2f * Mathf.PI * 165f * t);
+                float wob = 0.75f + 0.25f * Mathf.Sin(2f * Mathf.PI * 0.5f * t);
+                data[i] = s * 0.18f * wob;
+            }
+            return Make("ElevatorHum", data);
+        }
+
+        /// <summary>속삭임: 숨소리 같은 잡음에 모음 같은 공명을 얹어 알아들을 수 없는 말처럼 만든다.</summary>
+        public static AudioClip Whisper()
+        {
+            float len = 5f;
+            var data = new float[(int)(Rate * len)];
+            var rng = new System.Random(77);
+            float lp1 = 0f, lp2 = 0f, bp = 0f, bpv = 0f;
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float n = (float)(rng.NextDouble() * 2.0 - 1.0);
+                // 음절처럼 불규칙하게 커졌다 작아지는 소리
+                float syll = Mathf.Max(0f, Mathf.Sin(2f * Mathf.PI * 2.3f * t + Mathf.Sin(t * 1.7f) * 2f));
+                float f = 1400f + 900f * Mathf.Sin(2f * Mathf.PI * 0.6f * t);   // 공명 주파수가 천천히 움직인다
+                float w = 2f * Mathf.Sin(Mathf.PI * f / Rate);
+                bpv += w * (n - bp - 0.35f * bpv);
+                bp += w * bpv;
+                lp1 += 0.25f * (n - lp1); lp2 += 0.25f * (lp1 - lp2);
+                data[i] = (bp * 0.9f + (n - lp2) * 0.05f) * syll * 0.55f;
+            }
+            return Make("Whisper", data);
+        }
+
         /// <summary>건물 전체에 울리는 경보. 두 음이 번갈아 울린다.</summary>
         public static AudioClip Alarm()
         {

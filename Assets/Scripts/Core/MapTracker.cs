@@ -37,6 +37,13 @@ namespace Escape.Core
         }
 
         public bool Visited(int floor, int room) => visited[floor, room];
+
+        /// <summary>그 층의 방을 하나라도 지나가 봤는가 (엘리베이터는 탐험한 층만 갈 수 있다).</summary>
+        public bool VisitedFloor(int floor)
+        {
+            for (int r = 0; r < TowerLayout.RoomsPerFloor; r++) if (visited[floor, r]) return true;
+            return false;
+        }
         public Vector3 PlayerPosition => player != null ? player.position : Vector3.zero;
         public float PlayerYaw => player != null ? player.eulerAngles.y : 0f;
     }

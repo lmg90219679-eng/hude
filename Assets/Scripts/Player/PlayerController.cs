@@ -46,6 +46,9 @@ namespace Escape.Player
 
         /// <summary>인벤토리, 클리어, 게임오버 등으로 조작을 막는다.</summary>
         public bool InputLocked { get; set; }
+
+        /// <summary>이동과 웅크리기만 막고 시점은 돌릴 수 있다 (엘리베이터 안에서).</summary>
+        public bool MoveLocked { get; set; }
         public bool IsHidden { get; private set; }
 
         Vector3 hideExitPosition;
@@ -98,7 +101,7 @@ namespace Escape.Player
             if (InputLocked) return;
 
             Look(mouse);
-            if (IsHidden) return;
+            if (IsHidden || MoveLocked) return;
             UpdateCrouch(kb);
             Move(kb);
         }

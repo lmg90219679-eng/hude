@@ -92,6 +92,75 @@ namespace Escape.Audio
             heart.pitch = Mathf.Lerp(0.85f, 1.6f, closeness);
         }
 
+        // ---------- 엘리베이터 ----------
+
+        AudioClip ding, hum, whisper;
+        AudioSource humSource, whisperSource;
+        Coroutine dreadRoutine;
+
+        public void PlayDing()
+        {
+            if (ding == null) ding = ProceduralSounds.Ding();
+            sfx.PlayOneShot(ding, 0.9f);
+        }
+
+        /// <summary>엘리베이터가 움직이는 동안 낮은 윙윙 소리를 켜고 끈다.</summary>
+        public void SetElevatorHum(bool on)
+        {
+            if (humSource == null)
+            {
+                hum = ProceduralSounds.ElevatorHum();
+                humSource = NewSource("ElevatorHum", hum, loop: true, volume: 0f);
+            }
+            if (on && !humSource.isPlaying) humSource.Play();
+            humSource.volume = on ? 0.5f : 0f;
+            if (!on) humSource.Stop();
+        }
+
+        /// <summary>
+        /// 엘리베이터 안에서 뒤쪽 소리가 점점 가까워진다: 속삭임이 커지고 발소리가 빨라지며 커진다.
+        /// seconds 동안 0에서 1까지 다가온다.
+        /// </summary>
+        public void StartDread(float seconds)
+        {
+            StopDread();
+            dreadRoutine = StartCoroutine(DreadRoutine(seconds));
+        }
+
+        public void StopDread()
+        {
+            if (dreadRoutine != null) StopCoroutine(dreadRoutine);
+            dreadRoutine = null;
+            if (whisperSource != null) { whisperSource.Stop(); whisperSource.volume = 0f; }
+        }
+
+        System.Collections.IEnumerator DreadRoutine(float seconds)
+        {
+            if (whisperSource == null)
+            {
+                whisper = ProceduralSounds.Whisper();
+                whisperSource = NewSource("Whisper", whisper, loop: true, volume: 0f);
+            }
+            whisperSource.Play();
+
+            float t = 0f, nextStep = 0f;
+            while (t < seconds)
+            {
+                float k = Mathf.Clamp01(t / seconds);
+                whisperSource.volume = Mathf.Lerp(0.05f, 1f, k * k);
+                whisperSource.pitch = Random.Range(0.95f, 1.05f);
+
+                if (t >= nextStep)
+                {
+                    steps.pitch = Random.Range(0.75f, 0.95f);
+                    steps.PlayOneShot(footstep, Mathf.Lerp(0.1f, 1f, k));
+                    nextStep = t + Mathf.Lerp(0.9f, 0.4f, k);   // 다가올수록 빨라진다
+                }
+                t += Time.deltaTime;
+                yield return null;
+            }
+        }
+
         public void PlayClick()
         {
             if (click != null) sfx.PlayOneShot(click, 0.7f);

@@ -87,6 +87,17 @@ namespace Escape.Enemy
             }
         }
 
+        /// <summary>추적자를 정해진 자리에 세우고 플레이어를 잡은 것으로 처리한다.</summary>
+        public static void ForceCatch(ChaserAI chaser, Vector3 position, Quaternion rotation)
+        {
+            chaser.gameObject.SetActive(true);
+            var a = chaser.GetComponent<NavMeshAgent>();
+            if (a != null) a.enabled = false;
+            chaser.transform.SetPositionAndRotation(position, rotation);
+            PlayerCaught?.Invoke(chaser);
+            chaser.enabled = false;
+        }
+
         /// <summary>지금 켜져 있는 추적자들 (경보를 보낼 때 쓴다).</summary>
         public static readonly System.Collections.Generic.List<ChaserAI> Active = new System.Collections.Generic.List<ChaserAI>();
 

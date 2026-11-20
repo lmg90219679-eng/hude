@@ -120,6 +120,8 @@ namespace Escape.UI
 
             GUI.Label(new Rect(w - 420, h - 36, 400, 30), "Tab: 인벤토리   G: 연막   F: 손전등", new GUIStyle(right) { fontSize = 16 });
 
+            DrawElevator(w, h);
+
             if (inventoryOpen && flow.State == GameState.Playing) DrawInventory(w, h);
 
             if (flow.TintAlpha > 0.01f)
@@ -227,6 +229,48 @@ namespace Escape.UI
         {
             int i = TowerLayout.RoomX(room), j = TowerLayout.RoomZ(room);
             return new Rect(x0 + i * cell, y0 + (TowerLayout.Grid - 1 - j) * cell, cell, cell);
+        }
+
+        // ---------- 엘리베이터 ----------
+
+        void DrawElevator(float w, float h)
+        {
+            var ec = ElevatorController.Instance;
+            if (ec == null) return;
+
+            if (ec.State == ElevatorState.Called)
+                GUI.Label(new Rect(w - 420, 128, 400, 30), $"엘리베이터 도착까지 {Mathf.CeilToInt(ec.CallSecondsLeft)}초", right);
+            else if (ec.State == ElevatorState.Riding)
+                GUI.Label(new Rect(w - 420, 128, 400, 30), $"이동 중... {Mathf.CeilToInt(ec.RideSecondsLeft)}초", right);
+
+            if (Time.time - ec.MessageTime < 3.5f)
+                GUI.Label(new Rect(0, h * 0.78f, w, 40), ec.Message, center);
+
+            // 뒤를 돌아보면 안 되는 7초: 붉게 맥동하는 경고
+            if (ec.State == ElevatorState.Riding && ec.NoLookSecondsLeft > 0f)
+            {
+                float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 7f);
+                var style = new GUIStyle(center) { fontSize = 30, normal = { textColor = new Color(1f, 0.2f, 0.2f, 0.5f + 0.5f * pulse) } };
+                GUI.Label(new Rect(0, h * 0.18f, w, 50), "돌아보지 마", style);
+            }
+
+            // 층 선택: 가 본 층만 누를 수 있다
+            if (ec.ShowFloorSelect)
+            {
+                var panel = new Rect(w * 0.5f - 330, h - 120, 660, 70);
+                Fill(panel, new Color(0f, 0f, 0f, 0.7f));
+                GUI.Label(new Rect(panel.x, panel.y + 2, panel.width, 26), "행선지를 고르세요 (숫자 키)", small);
+
+                float cell = panel.width / TowerLayout.Floors;
+                for (int f = 0; f < TowerLayout.Floors; f++)
+                {
+                    bool here = f == ec.CabinFloor;
+                    bool known = MapTracker.Instance != null && MapTracker.Instance.VisitedFloor(f);
+                    var c = here ? new Color(0.9f, 0.8f, 0.3f) : known ? new Color(0.85f, 0.85f, 0.9f) : new Color(0.35f, 0.35f, 0.38f);
+                    var st = new GUIStyle(center) { fontSize = 20, normal = { textColor = c } };
+                    GUI.Label(new Rect(panel.x + f * cell, panel.y + 28, cell, 36), $"[{f + 1}] {TowerLayout.Label(f)}", st);
+                }
+            }
         }
 
         // ---------- 인벤토리 ----------

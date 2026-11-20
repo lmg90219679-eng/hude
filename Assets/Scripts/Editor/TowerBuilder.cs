@@ -34,6 +34,7 @@ namespace Escape.EditorTools
             public int roomA, roomB;
             public string keyId;
             public int treeOrder;
+            public bool requiresPower;
         }
 
         static readonly List<DoorRequest> doorRequests = new List<DoorRequest>();
@@ -79,6 +80,7 @@ namespace Escape.EditorTools
             }
 
             BuildElectricalRoomGeometry(map.transform);
+            BuildElevatorGeometry(map.transform);
             BuildNavMeshForTower(map);
 
             // 플레이어: 1층 서쪽 계단방에서 시작
@@ -98,6 +100,7 @@ namespace Escape.EditorTools
             BuildStairs(map.transform);
             BuildPowerBoxOnGround(map.transform);
             BuildElectricalRoomProps(map.transform);
+            BuildElevatorProps(map.transform);
             BuildBasementLights(map.transform);
             new GameObject("PowerGrid").AddComponent<Escape.Core.PowerGrid>();
             new GameObject("PowerEffects").AddComponent<Escape.Core.PowerEffects>();
@@ -222,7 +225,17 @@ namespace Escape.EditorTools
                     });
                 }
                 WallSegment(root, new Vector3(size, y, c), Vector3.forward, false);               // 동쪽
-                WallSegment(root, new Vector3(c, y, size), Vector3.right, false);                 // 북쪽
+                // 북쪽 벽의 가운데 방(1,2)에는 엘리베이터 승강장으로 통하는 숨겨진 문이 있다 (발전기가 복구돼야 열린다)
+                bool liftHallDoor = k == 1;
+                WallSegment(root, new Vector3(c, y, size), Vector3.right, liftHallDoor);          // 북쪽
+                if (liftHallDoor)
+                {
+                    doorRequests.Add(new DoorRequest
+                    {
+                        center = new Vector3(c, y, size), along = Vector3.right, kind = DoorKind.Secret,
+                        floor = floor, roomA = 7, roomB = 7, treeOrder = -1, requiresPower = true,
+                    });
+                }
                 WallSegment(root, new Vector3(c, y, 0f), Vector3.right, exitHere);                // 남쪽
                 if (exitHere)
                 {
@@ -337,6 +350,7 @@ namespace Escape.EditorTools
                 door.lockKeyId = req.keyId;
                 door.treeOrder = req.treeOrder;
                 door.secret = req.kind == DoorKind.Secret;
+                door.requiresPower = req.requiresPower;
                 EditorUtility.SetDirty(door);
             }
         }
