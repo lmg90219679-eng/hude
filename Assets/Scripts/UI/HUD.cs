@@ -98,8 +98,8 @@ namespace Escape.UI
             {
                 // M키: 큰 지도 (가 본 방만 보인다)
                 Fill(new Rect(0, 0, w, h), new Color(0f, 0f, 0f, 0.82f));
-                float ms = Mathf.Min(h - 140f, w - 200f);
-                DrawMap((w - ms) * 0.5f, (h - ms) * 0.5f + 20f, ms, true);
+                float ms = Mathf.Min(w - 200f, (h - 140f) * TowerLayout.SpanX / TowerLayout.SpanZ);
+                DrawMap((w - ms) * 0.5f, (h - ms * TowerLayout.SpanZ / TowerLayout.SpanX) * 0.5f + 20f, ms, true);
                 GUI.Label(new Rect(0, h - 56, w, 36), "M: 지도 닫기", center);
             }
             else DrawMap(MapMargin, MapMargin + 24f, MapSize, false);
@@ -185,8 +185,9 @@ namespace Escape.UI
             int floor = map.CurrentFloor;
             
             // 바탕과 테두리
-            Fill(new Rect(x0 - 4, y0 - 28, ms + 8, ms + 32), new Color(0f, 0f, 0f, 0.7f));
-            Fill(new Rect(x0, y0, ms, ms), new Color(0.04f, 0.04f, 0.05f, 0.9f));
+            float mh = ms * TowerLayout.SpanZ / TowerLayout.SpanX;
+            Fill(new Rect(x0 - 4, y0 - 28, ms + 8, mh + 32), new Color(0f, 0f, 0f, 0.7f));
+            Fill(new Rect(x0, y0, ms, mh), new Color(0.04f, 0.04f, 0.05f, 0.9f));
             string roomName = map.CurrentRoom >= 0 ? RoomNames.Get(floor, map.CurrentRoom) : "";
             string title = TowerLayout.Label(floor) + (roomName.Length > 0 ? "  ·  " + roomName : "");
             GUI.Label(new Rect(x0, y0 - (large ? 40 : 26), ms + 240, large ? 36 : 24), title, new GUIStyle(small) { fontSize = large ? 26 : 16, alignment = TextAnchor.MiddleLeft });
@@ -209,7 +210,7 @@ namespace Escape.UI
                 if (d == null || d.floor != floor || d.secret) continue;
                 if (!map.Visited(floor, d.roomA) && !map.Visited(floor, d.roomB)) continue;
                 Vector3 dp = d.transform.position;
-                Vector2 mid = new Vector2(x0 + dp.x / TowerLayout.Span * ms, y0 + (1f - dp.z / TowerLayout.Span) * ms);
+                Vector2 mid = new Vector2(x0 + dp.x / TowerLayout.SpanX * ms, y0 + (1f - dp.z / TowerLayout.SpanZ) * mh);
                 Color c = d.IsLocked ? new Color(0.9f, 0.2f, 0.2f) : (d.IsOpen ? new Color(0.5f, 0.85f, 0.5f) : new Color(0.75f, 0.75f, 0.75f));
                 float ds = large ? 8f : 5f;
                 Fill(new Rect(mid.x - ds, mid.y - ds, ds * 2f, ds * 2f), c);
@@ -230,9 +231,8 @@ namespace Escape.UI
 
             // 플레이어 (노란 점 + 바라보는 방향 표시)
             Vector3 p = map.PlayerPosition;
-            float span = TowerLayout.Span;
-            float px = x0 + Mathf.Clamp01(p.x / span) * ms;
-            float py = y0 + (1f - Mathf.Clamp01(p.z / span)) * ms;
+            float px = x0 + Mathf.Clamp01(p.x / TowerLayout.SpanX) * ms;
+            float py = y0 + (1f - Mathf.Clamp01(p.z / TowerLayout.SpanZ)) * mh;
             float dot = large ? 6f : 4f;
             Fill(new Rect(px - dot, py - dot, dot * 2f, dot * 2f), new Color(1f, 0.9f, 0.2f));
             float yaw = map.PlayerYaw * Mathf.Deg2Rad;
@@ -242,8 +242,8 @@ namespace Escape.UI
         static Rect RoomRect(float x0, float y0, float ms, int room)
         {
             Rect w = TowerLayout.RoomRect(room);   // 월드 영역 (z가 클수록 지도 위쪽)
-            float k = ms / TowerLayout.Span;
-            return new Rect(x0 + w.xMin * k, y0 + (TowerLayout.Span - w.yMax) * k, w.width * k, w.height * k);
+            float k = ms / TowerLayout.SpanX;
+            return new Rect(x0 + w.xMin * k, y0 + (TowerLayout.SpanZ - w.yMax) * k, w.width * k, w.height * k);
         }
 
         // ---------- 엘리베이터 ----------

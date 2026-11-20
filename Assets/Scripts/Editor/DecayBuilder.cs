@@ -105,10 +105,12 @@ namespace Escape.EditorTools
             // 계단 홀 승강장
             if (debris != null)
             {
-                if (HallHasStairs(floor, TowerLayout.WestStairRoom))
-                FlatQuad(root, "Landing_W", new Rect(4.35f, HallZ0, 1.5f, HallZ1 - HallZ0), y + 0.012f, true, 4f, debris);
-                if (HallHasStairs(floor, TowerLayout.EastStairRoom))
-                FlatQuad(root, "Landing_E", new Rect(18.15f, HallZ0, 1.5f, HallZ1 - HallZ0), y + 0.012f, true, 4f, debris);
+                foreach (bool west in new[] { true, false })
+                {
+                    int hr = west ? TowerLayout.WestStairRoom : TowerLayout.EastStairRoom;
+                    if (!HallHasStairs(floor, hr)) continue;
+                    FlatQuad(root, west ? "Landing_W" : "Landing_E", LandingRect(HallOf(west)), y + 0.012f, true, 4f, debris);
+                }
             }
 
             // 천장: 위층 바닥판의 계단 구멍은 비워 둔다
@@ -116,8 +118,8 @@ namespace Escape.EditorTools
             if (ceil != null)
             {
                 var holes = floor < TowerLayout.Floors - 1 ? SlabHoles(floor + 1) : new List<Rect>();
-                var xs = new SortedSet<float> { 0f, TowerLayout.Span };
-                var zs = new SortedSet<float> { 0f, TowerLayout.Span };
+                var xs = new SortedSet<float> { 0f, TowerLayout.SpanX };
+                var zs = new SortedSet<float> { 0f, TowerLayout.SpanZ };
                 foreach (var h in holes) { xs.Add(h.xMin); xs.Add(h.xMax); zs.Add(h.yMin); zs.Add(h.yMax); }
                 var xl = xs.ToList(); var zl = zs.ToList();
                 for (int i = 0; i < xl.Count - 1; i++)
@@ -129,17 +131,23 @@ namespace Escape.EditorTools
                     }
             }
 
-            // 노출된 배관: 중앙 복도 천장을 따라 세 가닥, 방마다 한 가닥씩 (무작위)
+            // 노출된 배관: 복도 천장을 따라 길게, 방마다 한 가닥씩 (무작위)
             var rust = RustMaterial();
-            Pipe(root, new Vector3(6.2f, y + 2.8f, 10.6f), new Vector3(17.8f, y + 2.8f, 10.6f), 0.13f, rust);
-            Pipe(root, new Vector3(6.2f, y + 2.72f, 13.4f), new Vector3(17.8f, y + 2.72f, 13.4f), 0.1f, rust);
-            Pipe(root, new Vector3(6.2f, y + 2.86f, 11.1f), new Vector3(17.8f, y + 2.86f, 11.1f), 0.07f, rust);
             var rng = new System.Random(9100 + floor);
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
-                if (room == 3 || room == 4 || room == 5) continue;
-                if (rng.NextDouble() < 0.4) continue;
+                if (TowerLayout.IsCorridorRoom(room) && (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom)) continue;
                 Rect r = TowerLayout.RoomRect(room);
+                if (TowerLayout.IsCorridorRoom(room))
+                {
+                    if (r.width < 6f) continue;   // 짧은 연결 복도(세로)는 건너뛴다
+                    float x0 = r.xMin + 0.2f, x1 = r.xMax - 0.2f;
+                    Pipe(root, new Vector3(x0, y + 2.8f, r.yMin + 0.6f), new Vector3(x1, y + 2.8f, r.yMin + 0.6f), 0.13f, rust);
+                    Pipe(root, new Vector3(x0, y + 2.72f, r.yMax - 0.6f), new Vector3(x1, y + 2.72f, r.yMax - 0.6f), 0.1f, rust);
+                    Pipe(root, new Vector3(x0, y + 2.86f, r.yMin + 1.1f), new Vector3(x1, y + 2.86f, r.yMin + 1.1f), 0.07f, rust);
+                    continue;
+                }
+                if (rng.NextDouble() < 0.4) continue;
                 float z = rng.NextDouble() < 0.5 ? r.yMin + 0.5f : r.yMax - 0.5f;
                 Pipe(root, new Vector3(r.xMin + 0.3f, y + 2.78f, z), new Vector3(r.xMax - 0.3f, y + 2.78f, z), 0.1f, rust);
             }
@@ -228,28 +236,37 @@ namespace Escape.EditorTools
                 float y = TowerLayout.FloorY(f);
                 if (HasProp("CeilingLight"))
                 {
-                    foreach (float x in new[] { 8.2f, 12f, 15.8f })
+                    for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
                     {
-                        var holder = new GameObject($"CeilingLight_{TowerLayout.ShortLabel(f)}").transform;
-                        holder.SetParent(root);
-                        var go = PropTools.Instantiate("CeilingLight", holder, 0.55f, 1.3f, (x > 12f ? 0f : 180f) + (float)(rng.NextDouble() * 10 - 5));
-                        if (go == null) { Object.DestroyImmediate(holder.gameObject); continue; }
-                        holder.position = new Vector3(x, y + 2.97f - 0.55f, 12f);
-                        Object.DestroyImmediate(go.GetComponent<Collider>());
-                        lights++;
+                        if (!TowerLayout.IsCorridorRoom(room)) continue;
+                        Rect r = TowerLayout.RoomRect(room);
+                        if (r.width < 6f || room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) continue;
+                        for (float x = r.xMin + 2.5f; x < r.xMax - 1.5f; x += 4.2f)
+                        {
+                            if (rng.NextDouble() < 0.25) continue;   // 일부는 떨어져 나갔다
+                            var holder = new GameObject($"CeilingLight_{TowerLayout.ShortLabel(f)}").transform;
+                            holder.SetParent(root);
+                            var go = PropTools.Instantiate("CeilingLight", holder, 0.55f, 1.3f, rng.Next(2) * 180f + (float)(rng.NextDouble() * 10 - 5));
+                            if (go == null) { Object.DestroyImmediate(holder.gameObject); continue; }
+                            holder.position = new Vector3(x, y + 2.97f - 0.55f, r.center.y);
+                            Object.DestroyImmediate(go.GetComponent<Collider>());
+                            lights++;
+                        }
                     }
                 }
                 if (HasProp("CeilingPanel"))
                 {
-                    foreach (int room in new[] { 1, 4, 6, 8 })
+                    for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
                     {
-                        if (rng.NextDouble() < 0.35) continue;
+                        if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) continue;
                         Rect r = TowerLayout.RoomRect(room);
+                        double chance = TowerLayout.IsCorridorRoom(room) ? (r.width >= 10f ? 0.5 : 0.0) : 0.4;
+                        if (rng.NextDouble() > chance) continue;
                         var holder = new GameObject($"CeilingPanel_{TowerLayout.ShortLabel(f)}_{room}").transform;
                         holder.SetParent(root);
                         var go = PropTools.Instantiate("CeilingPanel", holder, 0.9f, 2.0f, (float)(rng.NextDouble() * 360));
                         if (go == null) { Object.DestroyImmediate(holder.gameObject); continue; }
-                        float px = r.center.x + (float)(rng.NextDouble() * 2 - 1) * Mathf.Max(0.5f, r.width * 0.25f);
+                        float px = r.center.x + (float)(rng.NextDouble() * 2 - 1) * Mathf.Max(0.5f, r.width * 0.3f);
                         float pz = r.center.y + (float)(rng.NextDouble() * 2 - 1) * Mathf.Max(0.3f, r.height * 0.2f);
                         holder.position = new Vector3(px, y + 2.97f - 0.9f, pz);
                         Object.DestroyImmediate(go.GetComponent<Collider>());
@@ -276,13 +293,19 @@ namespace Escape.EditorTools
             mat.SetFloat("_Smoothness", 0.3f);
             EditorUtility.SetDirty(mat);
 
-            // (방, 벽, 위치) : 벽 N/S/W/E 위의 좌표 (벽을 따라)
-            var spots = new List<(int room, char wall, float at)>
+            // 바깥벽에 닿은 방마다 창을 낸다. 문(정문, 승강기, 전기실) 자리는 피한다.
+            var spots = new List<(int room, char wall, float at)>();
+            for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
-                (0, 'S', 3.5f), (1, 'S', 9.0f), (1, 'S', 15.0f), (2, 'S', 20.5f),
-                (6, 'N', 4.5f), (8, 'N', 19.5f), (0, 'W', 8.0f), (6, 'W', 19.0f),
-                (2, 'E', 4.0f), (8, 'E', 19.0f),
-            };
+                if (TowerLayout.IsCorridorRoom(room)) continue;
+                Rect r = TowerLayout.RoomRect(room);
+                if (r.yMin <= 0.01f)
+                    foreach (float t in new[] { 0.25f, 0.75f }) if (!(room == TowerLayout.ExitRoom && Mathf.Abs(r.xMin + r.width * t - r.center.x) < 2.6f)) spots.Add((room, 'S', r.xMin + r.width * t));
+                if (r.yMax >= TowerLayout.SpanZ - 0.01f)
+                    foreach (float t in new[] { 0.25f, 0.75f }) if (!(room == TowerLayout.StartRoom && Mathf.Abs(r.xMin + r.width * t - r.center.x) < 2.6f)) spots.Add((room, 'N', r.xMin + r.width * t));
+                if (r.xMin <= 0.01f) spots.Add((room, 'W', r.center.y + (room == 0 ? 3.2f : 0f)));   // 3층 전기실 문(z=4) 자리를 피한다
+                if (r.xMax >= TowerLayout.SpanX - 0.01f) spots.Add((room, 'E', r.center.y));
+            }
             int count = 0;
             for (int f = TowerLayout.GroundFloor; f < TowerLayout.Floors; f++)
             {
@@ -294,9 +317,9 @@ namespace Escape.EditorTools
                     switch (s.wall)
                     {
                         case 'S': p = new Vector3(s.at, y + 1.7f, inset); rot = Quaternion.Euler(0, 0, 0); break;
-                        case 'N': p = new Vector3(s.at, y + 1.7f, TowerLayout.Span - inset); rot = Quaternion.Euler(0, 180, 0); break;
+                        case 'N': p = new Vector3(s.at, y + 1.7f, TowerLayout.SpanZ - inset); rot = Quaternion.Euler(0, 180, 0); break;
                         case 'W': p = new Vector3(inset, y + 1.7f, s.at); rot = Quaternion.Euler(0, 90, 0); break;
-                        default: p = new Vector3(TowerLayout.Span - inset, y + 1.7f, s.at); rot = Quaternion.Euler(0, 270, 0); break;
+                        default: p = new Vector3(TowerLayout.SpanX - inset, y + 1.7f, s.at); rot = Quaternion.Euler(0, 270, 0); break;
                     }
                     var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
                     q.name = "Window";

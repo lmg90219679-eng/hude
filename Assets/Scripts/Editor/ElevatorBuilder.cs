@@ -9,17 +9,17 @@ namespace Escape.EditorTools
     /// 비밀 엘리베이터 공간을 만든다. 각 층 북쪽 중앙 방(1,2)의 북쪽 벽 너머에 숨겨진 승강장 홀이 있고,
     /// 그 뒤에 5개 층을 관통하는 승강로와 오르내리는 승강기(cabin)가 있다.
     ///
-    ///   z=24  방 (1,2)의 북쪽 벽 (숨겨진 문, 발전기가 복구돼야 열린다)
-    ///   z=24~28  승강장 홀 (x 9~15)
-    ///   z=28  승강장 벽 + 엘리베이터 바깥 문 (폭 2.4m)
-    ///   z=28~32  승강로 (x 10~14). 승강기는 가운데(12, 30)에 있고 안쪽 폭은 3.6m
+    ///   z=36  북쪽 가운데 방(시작 방)의 북쪽 벽 (숨겨진 문, 발전기가 복구돼야 열린다)
+    ///   z=36~40  승강장 홀 (x 21~27)
+    ///   z=40  승강장 벽 + 엘리베이터 바깥 문 (폭 2.4m)
+    ///   z=40~44  승강로 (x 22~26). 승강기는 가운데(24, 42)에 있고 안쪽 폭은 3.6m
     /// 텍스처는 Varco 이미지를 쓴다 (Assets/Textures/Elevator).
     /// </summary>
     public static partial class Week1SceneBuilder
     {
-        const float HallMinX = 9f, HallMaxX = 15f, HallMinZ = 24f, HallMaxZ = 28f;
-        const float ShaftMinX = 10f, ShaftMaxX = 14f, ShaftMinZ = 28f, ShaftMaxZ = 32f;
-        const float ShaftCenterX = 12f, CabinCenterZ = 30f;
+        const float HallMinX = 21f, HallMaxX = 27f, HallMinZ = 36f, HallMaxZ = 40f;
+        const float ShaftMinX = 22f, ShaftMaxX = 26f, ShaftMinZ = 40f, ShaftMaxZ = 44f;
+        const float ShaftCenterX = 24f, CabinCenterZ = 42f;
         const float LiftDoorWidth = 2.4f, LiftDoorHeight = 2.4f;
         const string ElevTexDir = "Assets/Textures/Elevator";
 
