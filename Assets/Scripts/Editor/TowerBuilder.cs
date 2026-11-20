@@ -686,6 +686,22 @@ namespace Escape.EditorTools
             return new Vector2(x, z);
         }
 
+        static Material stairDoorUpMat, stairDoorDownMat;
+
+        /// <summary>Varco 이미지로 만든 계단 방화문(STAIRS 표지판). 이미지의 어두운 가장자리는 잘라 쓰고, 올라가는 문은 초록빛, 내려가는 문은 붉은빛을 살짝 얹는다.</summary>
+        static Material StairDoorMaterial(bool up)
+        {
+            const string tex = "Assets/Textures/Hospital/StairDoor.png";
+            if (AssetDatabase.LoadAssetAtPath<Texture2D>(tex) == null) return up ? stairUpMat : stairDownMat;
+            ref Material cached = ref (up ? ref stairDoorUpMat : ref stairDoorDownMat);
+            if (cached != null) return cached;
+            var mat = TextureMaterial(up ? "StairDoorUp" : "StairDoorDown", tex, new Vector2(0.621f, 0.915f), new Vector2(0.193f, 0.0625f), 0.2f);
+            mat.SetColor("_BaseColor", up ? new Color(0.78f, 0.95f, 0.8f) : new Color(0.95f, 0.76f, 0.74f));
+            EditorUtility.SetDirty(mat);
+            cached = mat;
+            return mat;
+        }
+
         static StairPortal MakePortal(Transform parent, int floor, int room, bool up)
         {
             float floorY = TowerLayout.FloorY(floor);
@@ -699,7 +715,7 @@ namespace Escape.EditorTools
             go.transform.SetParent(parent);
             go.transform.position = new Vector3(slot.x, floorY + 1.2f, slot.y);
             go.transform.localScale = new Vector3(0.3f, 2.4f, 1.4f);
-            go.GetComponent<Renderer>().sharedMaterial = up ? stairUpMat : stairDownMat;
+            go.GetComponent<Renderer>().sharedMaterial = StairDoorMaterial(up);
 
             // 도착했을 때 서는 자리: 계단 앞 (홀 안쪽을 본다)
             var exit = new GameObject("ArrivalPoint").transform;
