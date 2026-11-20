@@ -113,6 +113,7 @@ namespace Escape.EditorTools
                     Pipe(root, new Vector3(x0, y + 2.86f, r.yMin + 1.1f), new Vector3(x1, y + 2.86f, r.yMin + 1.1f), 0.07f, rust);
                     continue;
                 }
+                if (TowerLayout.IsVoidRoom(room)) continue;
                 if (rng.NextDouble() < 0.4) continue;
                 float z = rng.NextDouble() < 0.5 ? r.yMin + 0.5f : r.yMax - 0.5f;
                 Pipe(root, new Vector3(r.xMin + 0.3f, y + 2.78f, z), new Vector3(r.xMax - 0.3f, y + 2.78f, z), 0.1f, rust);
@@ -227,7 +228,7 @@ namespace Escape.EditorTools
                 {
                     for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
                     {
-                        if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) continue;
+                        if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom || TowerLayout.IsVoidRoom(room)) continue;
                         Rect r = TowerLayout.RoomRect(room);
                         double chance = TowerLayout.IsCorridorRoom(room) ? (r.width >= 10f ? 0.5 : 0.0) : 0.4;
                         if (rng.NextDouble() > chance) continue;
@@ -266,7 +267,7 @@ namespace Escape.EditorTools
             var spots = new List<(int room, char wall, float at)>();
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
-                if (TowerLayout.IsCorridorRoom(room)) continue;
+                if (TowerLayout.IsCorridorRoom(room) || TowerLayout.IsVoidRoom(room)) continue;
                 Rect r = TowerLayout.RoomRect(room);
                 if (r.yMin <= 0.01f)
                     foreach (float t in new[] { 0.25f, 0.75f }) if (!(room == TowerLayout.ExitRoom && Mathf.Abs(r.xMin + r.width * t - r.center.x) < 2.6f)) spots.Add((room, 'S', r.xMin + r.width * t));

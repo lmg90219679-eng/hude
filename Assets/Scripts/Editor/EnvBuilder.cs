@@ -81,18 +81,18 @@ namespace Escape.EditorTools
             {
                 int west = TowerLayout.RoomAt(new Vector3(line - 0.3f, 0, mid));
                 int east = TowerLayout.RoomAt(new Vector3(line + 0.3f, 0, mid));
-                if (west >= 0)   // 서쪽 방에서 동쪽을 본다: 오른쪽이 -z
+                if (west >= 0 && !TowerLayout.IsVoidRoom(west))   // 서쪽 방에서 동쪽을 본다: 오른쪽이 -z
                     AddSkinQuad(west, new Vector3(line - off, y0, b), new Vector3(line - off, y1, b), new Vector3(line - off, y1, a), new Vector3(line - off, y0, a), len);
-                if (east >= 0)   // 동쪽 방에서 서쪽을 본다: 오른쪽이 +z
+                if (east >= 0 && !TowerLayout.IsVoidRoom(east))   // 동쪽 방에서 서쪽을 본다: 오른쪽이 +z
                     AddSkinQuad(east, new Vector3(line + off, y0, a), new Vector3(line + off, y1, a), new Vector3(line + off, y1, b), new Vector3(line + off, y0, b), len);
             }
             else
             {
                 int south = TowerLayout.RoomAt(new Vector3(mid, 0, line - 0.3f));
                 int north = TowerLayout.RoomAt(new Vector3(mid, 0, line + 0.3f));
-                if (south >= 0)  // 남쪽 방에서 북쪽을 본다: 오른쪽이 +x
+                if (south >= 0 && !TowerLayout.IsVoidRoom(south))  // 남쪽 방에서 북쪽을 본다: 오른쪽이 +x
                     AddSkinQuad(south, new Vector3(a, y0, line - off), new Vector3(a, y1, line - off), new Vector3(b, y1, line - off), new Vector3(b, y0, line - off), len);
-                if (north >= 0)  // 북쪽 방에서 남쪽을 본다: 오른쪽이 -x
+                if (north >= 0 && !TowerLayout.IsVoidRoom(north))  // 북쪽 방에서 남쪽을 본다: 오른쪽이 -x
                     AddSkinQuad(north, new Vector3(b, y0, line + off), new Vector3(b, y1, line + off), new Vector3(a, y1, line + off), new Vector3(a, y0, line + off), len);
             }
         }
@@ -128,6 +128,7 @@ namespace Escape.EditorTools
             var ceilBase = DecayMat("CeilingDecay", "CeilingDecay.png", Vector2.one, 0.1f, 0.8f);
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
+                if (TowerLayout.IsVoidRoom(room)) continue;
                 var env = RoomThemes.Get(floor, room);
                 Rect r = TowerLayout.RoomRect(room);
                 bool hall = (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) && HallHasStairs(floor, room);
@@ -175,7 +176,7 @@ namespace Escape.EditorTools
             {
                 for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
                 {
-                    if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) continue;
+                    if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom || TowerLayout.IsVoidRoom(room)) continue;
                     var env = RoomThemes.Get(f, room);
                     Rect rc = TowerLayout.RoomRect(room);
                     int h = (room * 7919 + f * 104729) & 0x7fffffff;

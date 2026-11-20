@@ -189,7 +189,13 @@ namespace Escape.EditorTools
 
             // 열쇠 없이 갈 수 있는 곳: 모든 복도(계단 홀 포함)와 시작 방
             var reach = new HashSet<int> { TowerLayout.StartRoom };
-            for (int r = 0; r < TowerLayout.RoomsPerFloor; r++) if (TowerLayout.IsCorridorRoom(r)) reach.Add(r);
+            int reachTarget = 0;
+            for (int r = 0; r < TowerLayout.RoomsPerFloor; r++)
+            {
+                if (TowerLayout.IsVoidRoom(r)) continue;
+                reachTarget++;
+                if (TowerLayout.IsCorridorRoom(r)) reach.Add(r);
+            }
 
             var used = new HashSet<int>();
             for (int e = 0; e < Edges.Count; e++) if (Edges[e].open || Edges[e].stair) used.Add(e);
@@ -201,7 +207,7 @@ namespace Escape.EditorTools
 
             // 나머지 방을 문으로 하나씩 연결 (트리). 어떤 방이든 복도에서 이어진 길이 하나는 있다.
             var tree = new List<(int edge, int newRoom)>();
-            while (reach.Count < TowerLayout.RoomsPerFloor)
+            while (reach.Count < reachTarget)
             {
                 var candidates = Enumerable.Range(0, Edges.Count)
                     .Where(e => !used.Contains(e) && (reach.Contains(Edges[e].a) ^ reach.Contains(Edges[e].b))).ToList();
@@ -413,7 +419,7 @@ namespace Escape.EditorTools
             var root = new GameObject($"Patrol_{TowerLayout.ShortLabel(floor)}").transform;
             // 건물이 커서 모든 방을 돌지 않고, 복도와 방 몇 곳을 무작위로 순찰한다
             var rooms = Enumerable.Range(0, TowerLayout.RoomsPerFloor)
-                .Where(r => r != TowerLayout.WestStairRoom && r != TowerLayout.EastStairRoom)
+                .Where(r => r != TowerLayout.WestStairRoom && r != TowerLayout.EastStairRoom && !TowerLayout.IsVoidRoom(r))
                 .OrderBy(_ => rng.Next()).Take(36).ToList();
             var list = new List<Transform>();
             for (int n = 0; n < rooms.Count; n++)
@@ -620,6 +626,7 @@ namespace Escape.EditorTools
 
             for (int room = 0; room < TowerLayout.RoomsPerFloor; room++)
             {
+                if (TowerLayout.IsVoidRoom(room)) continue;
                 Rect r = TowerLayout.RoomRect(room);
                 bool stairRoom = IsStairRoom(room) && HallHasStairs(floor, room);   // 계단이 닿는 홀만 가구를 비운다
                 var avoid = new List<(Vector2 p, float r)>(floorAvoid);

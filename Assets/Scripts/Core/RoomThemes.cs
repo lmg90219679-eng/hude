@@ -197,6 +197,7 @@ namespace Escape.Core
                 for (int r = 0; r < rooms; r++)
                 {
                     var env = new RoomEnv();
+                    if (TowerLayout.IsVoidRoom(r)) { envs[f, r] = env; continue; }   // 없앤 방 자리
                     if (TowerLayout.IsCorridorRoom(r))
                     {
                         env.theme = "복도";

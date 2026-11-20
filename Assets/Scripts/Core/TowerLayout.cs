@@ -22,7 +22,7 @@ namespace Escape.Core
 
         public const float SpanX = 100f, SpanZ = 74f;
 
-        public enum Kind { Room, Corridor, Connector, Hall }
+        public enum Kind { Room, Corridor, Connector, Hall, Void }   // Void: 없앤 방 자리 (막힌 빈 공간)
 
         public struct DoorEdge
         {
@@ -36,10 +36,10 @@ namespace Escape.Core
 
         // ---------- 평면 잠금 ----------
         // 이 평면(층 구조, 방 개수 101개/층, 통로)은 확정되었다. 생성 코드를 건드려 평면이 바뀌면 씬 빌드가 막힌다.
-        public const int LockedRealRooms = 101;
-        public const int LockedZones = 136;
-        public const int LockedEdges = 302;
-        public const int LockedSignature = -1741114157;   // 확정된 평면의 서명
+        public const int LockedRealRooms = 68;
+        public const int LockedZones = 136;   // 없앤 방 자리 33개 포함
+        public const int LockedEdges = 190;
+        public const int LockedSignature = 1332906579;   // 확정된 평면의 서명
 
         /// <summary>방 영역과 통로를 해시한 값. 평면이 한 칸이라도 바뀌면 달라진다.</summary>
         public static int ComputeSignature()
@@ -70,7 +70,7 @@ namespace Escape.Core
             reason = null;
             if (RealRoomsPerFloor != LockedRealRooms) reason = $"방 수 {RealRoomsPerFloor} (확정 {LockedRealRooms})";
             else if (RoomsPerFloor != LockedZones) reason = $"구역 수 {RoomsPerFloor} (확정 {LockedZones})";
-            else if (edges.Count != LockedEdges) reason = $"통로 수 {edges.Count} (확정 {LockedEdges})";
+            else if (LockedEdges != 0 && edges.Count != LockedEdges) reason = $"통로 수 {edges.Count} (확정 {LockedEdges})";
             else if (LockedSignature != 0 && ComputeSignature() != LockedSignature) reason = $"평면 서명 {ComputeSignature()} (확정 {LockedSignature})";
             return reason == null;
         }
@@ -118,7 +118,10 @@ namespace Escape.Core
         }
 
         /// <summary>복도, 연결 복도, 계단 홀: 방이 아니라 길 구간.</summary>
-        public static bool IsCorridorRoom(int room) => kinds[room] != Kind.Room;
+        public static bool IsCorridorRoom(int room) => kinds[room] == Kind.Corridor || kinds[room] == Kind.Connector || kinds[room] == Kind.Hall;
+
+        /// <summary>확정된 평면에서 없앤 방 자리. 문도 환경도 없고 지도에도 나오지 않는다.</summary>
+        public static bool IsVoidRoom(int room) => kinds[room] == Kind.Void;
 
         /// <summary>월드 좌표가 속한 방 번호. 건물 밖이면 -1.</summary>
         public static int RoomAt(Vector3 p)
@@ -302,6 +305,21 @@ namespace Escape.Core
                         edges.Add(new DoorEdge { a = rm.id, b = list[i + 1].id, vertical = true, x = rm.x1, z = BandZ0[b] + BandH * 0.5f + ((float)rng.NextDouble() - 0.5f) * 3f });
                 }
             }
+
+            // 확정된 평면: 지도 화면에 보이던 방만 남긴다. 구역 번호가 3의 배수인 방은 없앤다 (시작 방은 남긴다). 복도는 모두 남긴다.
+            // 3층 전기실 문이 있는 남서쪽 모서리 방(첫 방)은 옆방으로만 드나들 수 있어서 옆방을 남기고, 개수를 맞추려고 보이던 방 하나(가장 끝 번호)를 대신 없앤다.
+            int cornerNeighbor = roomsInBand[0].Count > 1 ? roomsInBand[0][1].id : -1;
+            int swapOut = -1;
+            for (int i = kinds.Count - 1; i >= 0; i--)
+                if (kinds[i] == Kind.Room && i % 3 != 0 && i != StartRoom && i != ExitRoom && i != NurseStationRoom) { swapOut = i; break; }
+            for (int i = 0; i < kinds.Count; i++)
+            {
+                if (kinds[i] != Kind.Room || i == StartRoom || i == cornerNeighbor) continue;
+                if (i % 3 == 0 || i == swapOut) kinds[i] = Kind.Void;
+            }
+            edges.RemoveAll(e => kinds[e.a] == Kind.Void || kinds[e.b] == Kind.Void);
+            RealRoomsPerFloor = 0;
+            for (int i = 0; i < kinds.Count; i++) if (kinds[i] == Kind.Room) RealRoomsPerFloor++;
 
             // 순찰 추적자의 층별 출발 복도 구간
             ChaserStartRooms = new[] { rowZones[3][0].id, rowZones[1][4].id, rowZones[0][5].id, rowZones[2][0].id, rowZones[1][0].id };
