@@ -37,11 +37,10 @@ namespace Escape.EditorTools
             return new AnchorSpot { pos = new Vector2(x, z), faceYaw = east ? 270f : 90f };
         }
 
-        /// <summary>계단 홀에서는 계단이 붙은 쪽 벽(서쪽 홀은 서쪽, 동쪽 홀은 동쪽)에 소품을 놓지 않는다.</summary>
+        /// <summary>계단 홀에는 소품을 놓지 않는다.</summary>
         static bool AnchorUsable(int room, string anchorName)
         {
-            if (room == TowerLayout.WestStairRoom && anchorName.EndsWith("W")) return false;
-            if (room == TowerLayout.EastStairRoom && anchorName.EndsWith("E")) return false;
+            if (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) return false;   // 계단통이 차지한다
             return true;
         }
 

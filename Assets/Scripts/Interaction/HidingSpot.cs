@@ -2,14 +2,14 @@ using UnityEngine;
 
 namespace Escape.Interaction
 {
-    /// <summary>옷장, 침대 밑. E키로 들어가 숨고, 숨은 동안 추적자는 플레이어를 볼 수 없다.</summary>
+    /// <summary>옷장, 침대 밑. F키로 들어가 숨고, 숨은 동안 추적자는 플레이어를 볼 수 없다.</summary>
     public class HidingSpot : MonoBehaviour, IInteractable
     {
         [SerializeField] Transform hidePoint;
         [SerializeField] Transform exitPoint;
         [SerializeField] float eyeHeight = -1f;      // 침대 뒤처럼 몸을 낮춰 숨는 곳은 눈높이를 낮춘다 (-1이면 그대로)
 
-        public string GetPrompt(Interactor who) => eyeHeight > 0f ? "E: 침대 뒤에 숨는다" : "E: 숨는다";
+        public string GetPrompt(Interactor who) => eyeHeight > 0f ? "F: 침대 뒤에 숨는다" : "F: 숨는다";
 
         public void Interact(Interactor who)
         {

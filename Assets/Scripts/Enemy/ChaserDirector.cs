@@ -33,13 +33,32 @@ namespace Escape.Enemy
             foreach (var c in chasers) c.GraceUntil = Time.time + startGraceSeconds;
         }
 
-        void OnEnable() => StairPortal.Used += OnStairUsed;
-        void OnDisable() => StairPortal.Used -= OnStairUsed;
+        int lastPlayerFloor = -1;
+
+        /// <summary>도착한 층에서 플레이어와 가장 가까운 계단 입구 자리.</summary>
+        static Vector3 NearestStairArrival(int floor, Vector3 from)
+        {
+            Vector3 best = from;
+            float bestDist = float.MaxValue;
+            foreach (var s in StairPortal.All)
+            {
+                if (s == null || s.floor != floor || s.exitPoint == null) continue;
+                float d = Vector3.Distance(from, s.exitPoint.position);
+                if (d < bestDist) { bestDist = d; best = s.exitPoint.position; }
+            }
+            return best;
+        }
 
         void Update()
         {
             if (player == null) return;
             int playerFloor = TowerLayout.FloorOf(player.transform.position.y);
+
+            // 플레이어가 계단을 걸어 다른 층으로 넘어가면, 가까이서 쫓던 추적자가 계단 입구로 따라온다
+            if (lastPlayerFloor >= 0 && playerFloor != lastPlayerFloor)
+                OnStairUsed(lastPlayerFloor, playerFloor, NearestStairArrival(playerFloor, player.transform.position));
+            lastPlayerFloor = playerFloor;
+
             foreach (var c in chasers)
             {
                 if (c == null) continue;

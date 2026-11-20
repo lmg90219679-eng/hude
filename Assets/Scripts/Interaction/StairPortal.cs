@@ -6,7 +6,7 @@ namespace Escape.Interaction
 {
     /// <summary>
     /// 계단. 각 층에는 계단통이 2개(서쪽, 동쪽) 있고, 각 계단통에 올라가는 계단과 내려가는 계단이 하나씩 있다.
-    /// E키로 타면 짝이 되는 계단 앞으로 이동한다. 엘리베이터는 없다.
+    /// F키로 타면 짝이 되는 계단 앞으로 이동한다. 엘리베이터는 없다.
     /// </summary>
     public class StairPortal : MonoBehaviour, IInteractable
     {
@@ -28,8 +28,8 @@ namespace Escape.Interaction
         public string GetPrompt(Interactor who)
         {
             if (partner == null) return null;
-            return up ? $"E: 위층으로 올라간다 ({TowerLayout.Label(floor + 1)})"
-                      : $"E: 아래층으로 내려간다 ({TowerLayout.Label(floor - 1)})";
+            return up ? $"F: 위층으로 올라간다 ({TowerLayout.Label(floor + 1)})"
+                      : $"F: 아래층으로 내려간다 ({TowerLayout.Label(floor - 1)})";
         }
 
         public void Interact(Interactor who)

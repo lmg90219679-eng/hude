@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Escape.Interaction
 {
     /// <summary>
-    /// 서랍장. E키로 열면 서랍이 스르륵 밀려 나오고(소음), 안에 물건이 있으면 눈에 보인다.
+    /// 서랍장. F키로 열면 서랍이 스르륵 밀려 나오고(소음), 안에 물건이 있으면 눈에 보인다.
     /// 한 번 더 E를 누르면 물건을 집는다. 물건이 없으면 빈 서랍이 그대로 보인다.
     /// TowerSpawner가 판마다 무작위로 아이템과 방 열쇠를 채운다.
     ///
@@ -58,9 +58,9 @@ namespace Escape.Interaction
 
         public string GetPrompt(Interactor who)
         {
-            if (!isOpen) return "E: 서랍을 연다";
+            if (!isOpen) return "F: 서랍을 연다";
             if (Content != null)
-                return "E: " + (Content.Type.HasValue ? ItemInfo.Label(Content.Type.Value) : "방 열쇠") + " 줍는다";
+                return "F: " + (Content.Type.HasValue ? ItemInfo.Label(Content.Type.Value) : "방 열쇠") + " 줍는다";
             return null;
         }
 

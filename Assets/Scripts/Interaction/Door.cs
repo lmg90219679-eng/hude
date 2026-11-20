@@ -46,12 +46,12 @@ namespace Escape.Interaction
             if (PowerBlocked) return null;
             if (IsLocked)
             {
-                if (who.Inventory.HasRoomKey(lockKeyId)) return "E: 열쇠로 문을 연다";
-                if (who.Inventory.Has(ItemType.Crowbar)) return "E: 쇠막대로 문을 강제로 연다 (큰 소음)";
+                if (who.Inventory.HasRoomKey(lockKeyId)) return "F: 열쇠로 문을 연다";
+                if (who.Inventory.Has(ItemType.Crowbar)) return "F: 쇠막대로 문을 강제로 연다 (큰 소음)";
                 return "잠겨 있다";
             }
-            if (secret && !open) return "E: 벽의 틈을 밀어 본다";
-            return open ? "E: 문을 닫는다" : "E: 문을 연다";
+            if (secret && !open) return "F: 벽의 틈을 밀어 본다";
+            return open ? "F: 문을 닫는다" : "F: 문을 연다";
         }
 
         public void Interact(Interactor who)

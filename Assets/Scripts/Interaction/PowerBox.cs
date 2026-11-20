@@ -12,7 +12,7 @@ namespace Escape.Interaction
         public string GetPrompt(Interactor who)
         {
             if (restored) return null;
-            return who.Inventory.Has(ItemType.Wire) ? "E: 전선을 연결한다" : "전원이 나갔다";
+            return who.Inventory.Has(ItemType.Wire) ? "F: 전선을 연결한다" : "전원이 나갔다";
         }
 
         public void Interact(Interactor who)

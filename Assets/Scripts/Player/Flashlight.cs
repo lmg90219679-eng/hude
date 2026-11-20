@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 namespace Escape.Player
 {
     /// <summary>
-    /// 손전등. F키로 켜고 끈다. 배터리가 닳고(켜 둔 동안만), 배터리 아이템으로 충전한다.
+    /// 손전등. E키로 켜고 끈다. 배터리가 닳고(켜 둔 동안만), 배터리 아이템으로 충전한다.
     /// 배터리가 다하면 예비 손전등이 있을 때 자동으로 교체한다.
     /// 어두운 건물에서는 이 빛이 유일한 조명이라, 켜고 끄는 차이가 한눈에 보인다.
     /// </summary>
@@ -35,7 +35,7 @@ namespace Escape.Player
         void Update()
         {
             var kb = Keyboard.current;
-            if (kb != null && kb.fKey.wasPressedThisFrame)
+            if (kb != null && kb.eKey.wasPressedThisFrame)
             {
                 if (battery > 0f) { SetOn(!IsOn); GameAudio.Instance?.PlayClick(); }
                 else TrySwapSpare();

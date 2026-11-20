@@ -11,7 +11,7 @@ namespace Escape.Interaction
     {
         public string GetPrompt(Interactor who)
         {
-            if (who.Inventory.HasMasterKey) return "E: 탈출한다";
+            if (who.Inventory.HasMasterKey) return "F: 탈출한다";
             return $"정문이 잠겨 있다 (탈출 열쇠 조각 {who.Inventory.PieceCount}/{Inventory.PiecesRequired})";
         }
 

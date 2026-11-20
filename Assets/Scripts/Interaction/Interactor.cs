@@ -14,7 +14,7 @@ namespace Escape.Interaction
     }
 
     /// <summary>
-    /// 플레이어 시선 앞의 물체와 E키로 상호작용한다. G키로 연막을 던진다.
+    /// 플레이어 시선 앞의 물체와 F키로 상호작용한다. G키로 연막을 던진다.
     /// </summary>
     public class Interactor : MonoBehaviour
     {
@@ -50,15 +50,15 @@ namespace Escape.Interaction
 
             if (player.IsHidden)
             {
-                CurrentPrompt = "E: 나오기";
-                if (kb.eKey.wasPressedThisFrame) player.ExitHiding();
+                CurrentPrompt = "F: 나오기";
+                if (kb.fKey.wasPressedThisFrame) player.ExitHiding();
                 return;
             }
 
             current = Find();
             CurrentPrompt = current?.GetPrompt(this);
 
-            if (current != null && CurrentPrompt != null && kb.eKey.wasPressedThisFrame)
+            if (current != null && CurrentPrompt != null && kb.fKey.wasPressedThisFrame)
                 current.Interact(this);
 
             if (kb.gKey.wasPressedThisFrame) ThrowSmoke();

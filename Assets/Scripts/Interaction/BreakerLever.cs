@@ -37,7 +37,7 @@ namespace Escape.Interaction
             var grid = PowerGrid.Instance;
             if (grid == null) return null;
             if (grid.Complete || raised) return null;
-            return $"E: 차단기 {index + 1}을 올린다";
+            return $"F: 차단기 {index + 1}을 올린다";
         }
 
         public void Interact(Interactor who)
