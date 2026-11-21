@@ -1,6 +1,8 @@
 using Escape.Core;
 using Escape.Items;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Escape.Interaction
 {
@@ -38,6 +40,9 @@ namespace Escape.Interaction
 
         [SerializeField] GameObject leak;   // 숨겨진 문 아래로 새어 나오는 빛 (찾는 단서)
 
+        public Vector3 obstacleSize;       // 씬 빌더가 채운다: 잠긴 문이 추적자의 길을 막는 상자 크기
+        public static readonly List<Door> All = new List<Door>();
+        NavMeshObstacle blocker;
         bool open;
         bool unlocked;
         float slideProgress;               // 0 = 닫힘, 1 = 활짝 열림 (미닫이)
@@ -50,6 +55,27 @@ namespace Escape.Interaction
         void Awake()
         {
             if (leaf != null) leafStart = leaf.localPosition;
+            // 잠긴 문, 숨겨진 문, 전력이 필요한 문은 추적자가 지나가지 못한다 (길찾기에서 막는다)
+            if (obstacleSize != Vector3.zero && (!string.IsNullOrEmpty(lockKeyId) || secret || requiresPower))
+            {
+                blocker = gameObject.AddComponent<NavMeshObstacle>();
+                blocker.shape = NavMeshObstacleShape.Box;
+                blocker.center = Vector3.up * 1.3f;
+                blocker.size = obstacleSize;
+                blocker.carving = true;
+                blocker.carveOnlyStationary = false;
+            }
+        }
+
+        void OnEnable() { All.Add(this); }
+        void OnDisable() { All.Remove(this); }
+
+        /// <summary>추적자가 문을 연다. 잠기거나 숨겨진 문은 열지 못한다.</summary>
+        public bool TryOpenByChaser()
+        {
+            if (IsLocked || secret || PowerBlocked) return false;
+            open = true;
+            return true;
         }
 
         bool PowerBlocked => requiresPower && (PowerGrid.Instance == null || !PowerGrid.Instance.Complete);
@@ -99,6 +125,8 @@ namespace Escape.Interaction
 
         void Update()
         {
+            if (blocker != null) blocker.enabled = IsLocked || PowerBlocked || (secret && !open);
+
             // 단서: 문이 닫혀 있고, (전력이 필요한 문이면) 발전기가 복구됐을 때만 빛이 새어 나온다
             if (leak != null)
             {

@@ -131,7 +131,7 @@ namespace Escape.EditorTools
                 {
                     var wps = BuildFloorWaypoints(f, rng);
                     int startRoom = k == 0 ? TowerLayout.ChaserStartRooms[f] : TowerLayout.ChaserStartRooms[(f + 2) % TowerLayout.Floors];
-                    BuildChaser(player.transform, wps, TowerLayout.RoomCenter(f, startRoom), $"Chaser_{TowerLayout.ShortLabel(f)}_{k}");
+                    BuildChaser(player.transform, wps, TowerLayout.RoomCenter(f, startRoom), $"Chaser_{TowerLayout.ShortLabel(f)}_{k}", f);
                 }
             }
 
@@ -501,6 +501,7 @@ namespace Escape.EditorTools
                 }
                 so.ApplyModifiedPropertiesWithoutUndo();
 
+                door.obstacleSize = alongX ? new Vector3(doorW, 2.6f, 0.5f) : new Vector3(0.5f, 2.6f, doorW);
                 door.floor = req.floor;
                 door.roomA = req.roomA;
                 door.roomB = req.roomB;

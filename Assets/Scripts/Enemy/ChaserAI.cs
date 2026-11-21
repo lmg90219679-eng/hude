@@ -79,6 +79,7 @@ namespace Escape.Enemy
         void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
+            if (GetComponent<ChaserDoorOpener>() == null) gameObject.AddComponent<ChaserDoorOpener>();
             if (eye == null) eye = transform;
             if (player != null)
             {

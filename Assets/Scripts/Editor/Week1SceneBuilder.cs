@@ -245,8 +245,9 @@ namespace Escape.EditorTools
             return player;
         }
 
-        static ChaserAI BuildChaser(Transform player, Transform[] waypoints, Vector3 startPosition, string name)
+        static ChaserAI BuildChaser(Transform player, Transform[] waypoints, Vector3 startPosition, string name, int floor = 2)
         {
+            SelectChaserVariant(floor);
             var chaser = new GameObject(name);
             chaser.transform.position = startPosition + Vector3.up * 0.05f;
 
@@ -328,10 +329,38 @@ namespace Escape.EditorTools
         /// <summary>Varco에서 가져온 FBX의 임포트 설정: URP 재질로 변환, 텍스처 추출.</summary>
         static void SetupChaserImport()
         {
-            // 텍스처는 걷기 FBX에서만 꺼낸다 (세 FBX가 같은 텍스처라 중복 저장을 막는다)
-            ImportChaserFbx(ChaserModelPath, null, loopClips: false);
-            ImportChaserFbx(ChaserWalkPath, "Textures_Walk", loopClips: true);
-            ImportChaserFbx(ChaserRunPath, null, loopClips: true);
+            for (int f = 0; f < TowerLayout.Floors; f++)
+            {
+                SelectChaserVariant(f);
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(ChaserWalkPath) == null) continue;
+                ImportChaserFbx(ChaserModelPath, null, loopClips: false);
+                ImportChaserFbx(ChaserWalkPath, "Textures_Walk", loopClips: true);
+                ImportChaserFbx(ChaserRunPath, null, loopClips: true);
+            }
+            SelectChaserVariant(TowerLayout.GroundFloor);
+        }
+
+        // 층마다 다른 추적자: 폴더, 키. 지하2 익사체, 지하1 집도의, 1층 살덩이(원래), 2층 환자, 3층 불탄 자.
+        static readonly string[] ChaserDirs =
+        {
+            "Assets/Models/Chaser/Drowned", "Assets/Models/Chaser/Surgeon", "Assets/Models/Chaser",
+            "Assets/Models/Chaser/Patient", "Assets/Models/Chaser/Burned",
+        };
+        static readonly float[] ChaserHeights = { 2.3f, 2.8f, 2.4f, 2.6f, 2.4f };
+        static string chaserDir = "Assets/Models/Chaser";
+        static string ChaserWalkPath => chaserDir + "/Chaser_Walk.fbx";
+        static string ChaserRunPath => chaserDir + "/Chaser_Run.fbx";
+        static string ChaserModelPath => chaserDir + "/Chaser.fbx";
+        static float ChaserHeight = 2.4f;
+
+        static void SelectChaserVariant(int floor)
+        {
+            floor = Mathf.Clamp(floor, 0, ChaserDirs.Length - 1);
+            string dir = ChaserDirs[floor];
+            if (!System.IO.File.Exists(dir + "/Chaser_Walk.fbx")) dir = "Assets/Models/Chaser";   // 모델이 아직 없으면 원래 모델
+            if (dir != chaserDir) { cachedSkin = null; cachedController = null; }
+            chaserDir = dir;
+            ChaserHeight = ChaserHeights[floor];
         }
 
         /// <summary>
@@ -344,9 +373,9 @@ namespace Escape.EditorTools
         static Material BuildChaserSkin()
         {
             if (cachedSkin != null) return cachedSkin;
-            const string dir = "Assets/Models/Chaser/Textures_Walk";
+            string dir = chaserDir + "/Textures_Walk";
             var baseTex = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/base_color.png");
-            const string normalPath = dir + "/normal.png";
+            string normalPath = dir + "/normal.png";
 
             var ti = AssetImporter.GetAtPath(normalPath) as TextureImporter;
             if (ti != null && ti.textureType != TextureImporterType.NormalMap)
@@ -356,7 +385,7 @@ namespace Escape.EditorTools
             }
             var normalTex = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
 
-            const string matPath = "Assets/Materials/ChaserSkin.mat";
+            string matPath = "Assets/Materials/ChaserSkin_" + System.IO.Path.GetFileName(chaserDir) + ".mat";
             System.IO.Directory.CreateDirectory(MatDir);
             AssetDatabase.DeleteAsset(matPath);
 
@@ -397,7 +426,7 @@ namespace Escape.EditorTools
 
             if (texFolder == null) return;
 
-            string texDir = "Assets/Models/Chaser/" + texFolder;
+            string texDir = chaserDir + "/" + texFolder;
             System.IO.Directory.CreateDirectory(texDir);
             imp.ExtractTextures(texDir);
             AssetDatabase.Refresh();
@@ -416,7 +445,7 @@ namespace Escape.EditorTools
                 return null;
             }
 
-            const string path = "Assets/Models/Chaser/ChaserController.controller";
+            string path = chaserDir + "/ChaserController.controller";
             AssetDatabase.DeleteAsset(path);
             var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(path);
             ctrl.AddParameter("Run", AnimatorControllerParameterType.Bool);
@@ -455,11 +484,7 @@ namespace Escape.EditorTools
             return null;
         }
 
-        const string ChaserWalkPath = "Assets/Models/Chaser/Chaser_Walk.fbx";
-        const string ChaserRunPath = "Assets/Models/Chaser/Chaser_Run.fbx";
 
-        const string ChaserModelPath = "Assets/Models/Chaser/Chaser.fbx";
-        const float ChaserHeight = 2.4f;
 
         /// <summary>
         /// 추적자 외형을 붙이고 키(높이)를 돌려준다. Varco 모델이 있으면 그걸, 없으면 캡슐을 쓴다.
