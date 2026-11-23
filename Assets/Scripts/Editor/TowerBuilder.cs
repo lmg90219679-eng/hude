@@ -80,6 +80,7 @@ namespace Escape.EditorTools
             cachedSkin = null;
             cachedController = null;
             doorRequests.Clear();
+            doorLeafMeshes.Clear();
             debrisSpots.Clear();
             decayCache.Clear();
             stairStepMat = stairWallMat = stairRailMat = null;
@@ -485,6 +486,8 @@ namespace Escape.EditorTools
                     panel.transform.position = req.center + Vector3.up * 1.3f;
                     panel.transform.localScale = panelSize;
                     panel.GetComponent<Renderer>().sharedMaterial = mat;
+                    // 손잡이는 경첩 반대쪽에 (양쪽 면 모두)
+                    panel.GetComponent<MeshFilter>().sharedMesh = DoorLeafMesh(alongX, AlongSign(req, alongX));
                     so.FindProperty("hinge").objectReferenceValue = hinge;
                     so.FindProperty("openAngle").floatValue = req.openAngle != 0f ? req.openAngle : 95f;
                 }
@@ -498,6 +501,8 @@ namespace Escape.EditorTools
                     leaf.transform.localScale = alongX ? new Vector3(doorW, 2.6f, 0.08f) : new Vector3(0.08f, 2.6f, doorW);
                     leaf.GetComponent<Renderer>().sharedMaterial = mat;
                     float dir = SlideDirection(req);
+                    // 문고리는 문이 열려 들어가는 쪽의 반대편 가장자리에 둔다 (양쪽 면 모두 같은 자리): 문은 항상 문고리 반대 방향으로 열린다
+                    leaf.GetComponent<MeshFilter>().sharedMesh = DoorLeafMesh(alongX, -dir * AlongSign(req, alongX));
                     so.FindProperty("leaf").objectReferenceValue = leaf.transform;
                     so.FindProperty("slideDir").vector3Value = req.along * dir;
                     so.FindProperty("slideDistance").floatValue = doorW * 0.95f;
@@ -515,6 +520,38 @@ namespace Escape.EditorTools
                 door.requiresPower = req.requiresPower;
                 EditorUtility.SetDirty(door);
             }
+        }
+
+        static float AlongSign(DoorRequest req, bool alongX) => Mathf.Sign(alongX ? req.along.x : req.along.z);
+
+        static readonly Dictionary<(bool, int), Mesh> doorLeafMeshes = new Dictionary<(bool, int), Mesh>();
+
+        /// <summary>
+        /// 문짝 메시: 큐브에서 큰 두 면(앞뒤)의 가로 UV를 고쳐서, 문 이미지의 문고리(이미지 오른쪽)가
+        /// 앞면에서든 뒷면에서든 문짝의 같은 쪽 가장자리에 오게 한다. handleSign은 문고리가 있는 쪽(문 진행 축 기준 +1/-1).
+        /// </summary>
+        static Mesh DoorLeafMesh(bool alongX, float handleSign)
+        {
+            int hs = handleSign >= 0f ? 1 : -1;
+            if (doorLeafMeshes.TryGetValue((alongX, hs), out var cached) && cached != null) return cached;
+
+            var tmp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var mesh = Object.Instantiate(tmp.GetComponent<MeshFilter>().sharedMesh);
+            Object.DestroyImmediate(tmp);
+            mesh.name = $"DoorLeaf_{(alongX ? "x" : "z")}_{(hs > 0 ? "p" : "n")}";
+
+            var v = mesh.vertices; var n = mesh.normals; var uv = mesh.uv;
+            for (int i = 0; i < v.Length; i++)
+            {
+                // 큰 면: 두께 방향(alongX면 z, 아니면 x)을 향한 면
+                bool big = alongX ? Mathf.Abs(n[i].z) > 0.5f : Mathf.Abs(n[i].x) > 0.5f;
+                if (!big) continue;
+                float a = alongX ? v[i].x : v[i].z;                 // -0.5 ~ 0.5
+                uv[i].x = hs > 0 ? a + 0.5f : 0.5f - a;            // 이미지 오른쪽(문고리)이 hs쪽 가장자리
+            }
+            mesh.uv = uv;
+            doorLeafMeshes[(alongX, hs)] = mesh;
+            return mesh;
         }
 
         /// <summary>문이 열릴 때 벽 속으로 들어갈 방향(+1/-1). 두 방이 공유하는 벽 구간 중 더 긴 쪽으로 간다.</summary>
