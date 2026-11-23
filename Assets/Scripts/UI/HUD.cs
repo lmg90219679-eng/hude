@@ -482,22 +482,12 @@ namespace Escape.UI
                 Vector3 p = map.PlayerPosition;
                 Vector2 c = toScreen(p.x, p.z);
                 var old = GUI.color;
-                if (!large)
                 {
-                    const float dotSize = 13f;
+                    float dotSize = large ? 18f : 13f;
                     GUI.color = new Color(0f, 0f, 0f, 0.85f);
                     GUI.DrawTexture(new Rect(c.x - dotSize * 0.5f - 2f, c.y - dotSize * 0.5f - 2f, dotSize + 4f, dotSize + 4f), circleTex);
                     GUI.color = new Color(1f, 0.9f, 0.25f);
                     GUI.DrawTexture(new Rect(c.x - dotSize * 0.5f, c.y - dotSize * 0.5f, dotSize, dotSize), circleTex);
-                }
-                else
-                {
-                    float sz = 30f;
-                    var oldM = GUI.matrix;
-                    GUIUtility.RotateAroundPivot(map.PlayerYaw, c);
-                    GUI.color = new Color(1f, 0.9f, 0.25f);
-                    GUI.DrawTexture(new Rect(c.x - sz * 0.5f, c.y - sz * 0.5f, sz, sz), arrowTex);
-                    GUI.matrix = oldM;
                 }
                 GUI.color = old;
             }
@@ -568,7 +558,7 @@ namespace Escape.UI
             GUI.Label(new Rect(lx, ly, 120, 26), "▲▼ 계단", new GUIStyle(small) { alignment = TextAnchor.MiddleLeft, normal = { textColor = Gold } });
             lx += 130f;
             var old = GUI.color; GUI.color = new Color(1f, 0.9f, 0.25f);
-            GUI.DrawTexture(new Rect(lx, ly + 2, 22, 22), arrowTex);
+            GUI.DrawTexture(new Rect(lx + 3, ly + 5, 16, 16), circleTex);
             GUI.color = old;
             GUI.Label(new Rect(lx + 28, ly, 120, 26), "나", new GUIStyle(small) { alignment = TextAnchor.MiddleLeft });
 
