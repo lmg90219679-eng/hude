@@ -80,6 +80,12 @@
 - 아이템 아이콘은 `ItemIcons.cs`가 서랍 안 모델을 찍어 `Assets/Resources/Icons/*.png`(투명 배경)로 만든다 (`Escape > Build Item Icons`, 씬 빌드 때도 만든다).
 - HUD(`HUD.cs`)는 1080p 기준으로 화면 크기에 맞춰 늘린다: 미니맵(플레이어를 따라가고 방 용도별 색, 문 상태, 계단, 바라보는 방향 화살표), 열쇠 조각 5칸, 손전등 배터리 막대, 키 모양 상호작용 안내, 획득 알림 카드, 소지품 창(아이콘 칸, 설명, 조합법, 방 열쇠), 큰 지도(층 탭, ←→로 층 넘기기, 범례).
 
+## 아키텍처 문서 (바뀔 때마다 갱신)
+- 구조가 바뀌면(새 빌더·런타임 모듈·계층·생성 순서·설계 결정·남은 일이 바뀔 때) 커밋 직전에 두 곳을 함께 고친다.
+  1. Notion 「개인 프로제트,,,」 맨 위 `🏗 아키텍처` 섹션 (page 41d2e26b-99a2-801e-9000-e9745665676c, `notion-update-page`의 `update_content`로 바뀐 줄만 고치고 "마지막 갱신" 날짜도 바꾼다)
+  2. Artifact 문서 https://claude.ai/artifact/A6YvkrpgZjnsuFb96kK58m (원본: 스크래치패드 `escape_architecture.html`, 없으면 `action: read`로 받아 같은 URL에 다시 게시한다)
+- 클래스 이름만 바뀌거나 내부 구현만 달라진 경우는 고치지 않는다.
+
 ## 작업 방식
 - 스크립트는 `Assets/Scripts/` 아래에 두고, 입력은 Input System 패키지를 사용한다
 - 코드 수정 후 Unity 컴파일 오류가 없는지 확인한다
