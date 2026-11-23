@@ -94,9 +94,9 @@ namespace Escape.EditorTools
             { "SteelLocker",   new PropSpec(1.9f,  0.9f) },
             { "Toilet",        new PropSpec(0.8f,  0.8f) },
             { "Bathtub",       new PropSpec(0.8f,  1.8f) },
-            { "Refrigerator",  new PropSpec(1.9f,  0.9f) },
+            { "Refrigerator",  new PropSpec(1.9f,  0.9f, -90f) },
             { "VendingMachine", new PropSpec(1.85f, 1.0f) },
-            { "Altar",         new PropSpec(1.3f,  1.8f) },
+            { "Altar",         new PropSpec(1.3f,  1.8f, 90f) },
             { "CardboardBoxes", new PropSpec(1.0f, 0.9f) },
             { "MopBucket",     new PropSpec(1.2f,  0.7f) },
             { "BrokenChair",   new PropSpec(0.9f,  0.8f) },
@@ -133,7 +133,10 @@ namespace Escape.EditorTools
 
             int count = narrow ? 3 + rng.Next(3) : 4 + rng.Next(3);
             for (int i = 0; i < count && i < names.Count; i++)
-                list.Add(env.props[rng.Next(env.props.Length)] + ":" + names[i]);
+            {
+                string pick = (i == 0 && env.theme == "예배실") ? "Altar" : env.props[rng.Next(env.props.Length)];   // 예배실에는 제단이 반드시 놓인다
+                list.Add(pick + ":" + names[i]);
+            }
             return list;
         }
 

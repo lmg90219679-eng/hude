@@ -1,6 +1,6 @@
 using UnityEngine; using System.Linq; using System.Reflection; using Escape.Player; using Escape.Core;
 string name = System.IO.File.ReadAllText("C:/Projects/Escape/devscripts/prop.txt").Trim();
-var c = Object.FindObjectsByType<Escape.Enemy.ChaserAI>(FindObjectsSortMode.None).FirstOrDefault(x => x.name.Contains(name));
+var c = Object.FindObjectsByType<Escape.Enemy.ChaserAI>(FindObjectsInactive.Include).FirstOrDefault(x => x.name.Contains(name));
 if (c == null) return "없음 " + name;
 var p = Object.FindAnyObjectByType<PlayerController>();
 Vector3 t = c.transform.position;

@@ -17,7 +17,7 @@ namespace Escape.Enemy
             float r2 = openRange * openRange;
             foreach (var d in Door.All)
             {
-                if (d == null || d.IsOpen) continue;
+                if (d == null) continue;
                 Vector3 dp = d.transform.position - p;
                 if (Mathf.Abs(dp.y) > 1.5f) continue;
                 dp.y = 0f;

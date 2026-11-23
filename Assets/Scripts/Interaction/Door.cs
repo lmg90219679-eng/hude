@@ -1,4 +1,5 @@
 using Escape.Core;
+using Escape.Enemy;
 using Escape.Items;
 using System.Collections.Generic;
 using UnityEngine;
@@ -45,6 +46,11 @@ namespace Escape.Interaction
         NavMeshObstacle blocker;
         bool open;
         bool unlocked;
+        bool openedByChaser;               // 추적자가 연 문은 잠시 뒤 스스로 닫힌다 (플레이어가 만진 문은 그대로 둔다)
+        float closeAt;
+        const float AutoCloseSeconds = 8f;
+        const float AutoCloseClearance = 2.8f;   // 이 거리 안에 추적자나 플레이어가 있으면 닫지 않는다
+        static Transform playerTransform;
         float slideProgress;               // 0 = 닫힘, 1 = 활짝 열림 (미닫이)
         float angle;                       // 여닫이
         Vector3 leafStart;
@@ -74,7 +80,8 @@ namespace Escape.Interaction
         public bool TryOpenByChaser()
         {
             if (IsLocked || secret || PowerBlocked) return false;
-            open = true;
+            if (!open) { open = true; openedByChaser = true; }
+            closeAt = Time.time + AutoCloseSeconds;
             return true;
         }
 
@@ -121,10 +128,40 @@ namespace Escape.Interaction
 
             NoiseSystem.Emit(transform.position, noiseRadius);
             open = !open;
+            openedByChaser = false;   // 플레이어가 직접 여닫은 문은 자동으로 닫지 않는다
+        }
+
+        bool SomeoneNear()
+        {
+            float r2 = AutoCloseClearance * AutoCloseClearance;
+            Vector3 p = transform.position;
+            foreach (var c in ChaserAI.Active)
+            {
+                if (c == null) continue;
+                Vector3 d = c.transform.position - p; d.y = 0f;
+                if (d.sqrMagnitude < r2) return true;
+            }
+            if (playerTransform == null)
+            {
+                var pc = FindFirstObjectByType<Escape.Player.PlayerController>();
+                if (pc != null) playerTransform = pc.transform;
+            }
+            if (playerTransform != null)
+            {
+                Vector3 d = playerTransform.position - p; d.y = 0f;
+                if (d.sqrMagnitude < r2) return true;
+            }
+            return false;
         }
 
         void Update()
         {
+            if (open && openedByChaser && Time.time >= closeAt)
+            {
+                if (SomeoneNear()) closeAt = Time.time + 1.5f;   // 아직 누가 지나가는 중이면 조금 더 기다린다
+                else { open = false; openedByChaser = false; }
+            }
+
             if (blocker != null) blocker.enabled = IsLocked || PowerBlocked || (secret && !open);
 
             // 단서: 문이 닫혀 있고, (전력이 필요한 문이면) 발전기가 복구됐을 때만 빛이 새어 나온다

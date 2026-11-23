@@ -189,6 +189,16 @@ namespace Escape.Core
             envs = new RoomEnv[TowerLayout.Floors, rooms];
             var used = new HashSet<long>();
 
+            // 예배실: 1층에서 가장 넓은 일반 방
+            int chapelRoom = -1; float bestArea = 0f;
+            for (int r = 0; r < rooms; r++)
+            {
+                if (TowerLayout.IsVoidRoom(r) || TowerLayout.IsCorridorRoom(r)) continue;
+                if (r == TowerLayout.ExitRoom || r == TowerLayout.StartRoom || r == TowerLayout.NurseStationRoom) continue;
+                Rect rc = TowerLayout.RoomRect(r);
+                if (rc.width * rc.height > bestArea) { bestArea = rc.width * rc.height; chapelRoom = r; }
+            }
+
             for (int f = 0; f < TowerLayout.Floors; f++)
             {
                 var counters = new Dictionary<string, int>();
@@ -217,6 +227,11 @@ namespace Escape.Core
 
                     roomNo++;
                     string special = SpecialName(f, r, out var specialProps);
+                    if (special == null && f == TowerLayout.GroundFloor && r == chapelRoom)
+                    {
+                        special = "예배실";   // 제단이 있는 예배실을 1층에 하나 둔다 (테마 무작위로는 한 번도 안 뽑혔다)
+                        specialProps = P("Altar", "WaitingBench", "WaitingBench", "WaitingBench");
+                    }
                     var pool = Pools[f];
                     int th = Hash(f, r, 3) % pool.Length;
                     Theme t = pool[th];

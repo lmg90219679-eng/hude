@@ -32,13 +32,14 @@
 - `TowerLayout`의 `Locked*` 상수와 `IsLayoutLocked`가 이를 지킨다 (평면 서명 해시). 평면이 바뀌면 `Escape > Build Tower Scene`이 오류를 내고 빌드하지 않는다. 평면을 바꿀 때만 상수를 갱신한다.
 
 ## 방마다 다른 환경
+- 1층에서 가장 넓은 일반 방은 항상 `예배실`(제단 `Altar` 반드시 놓임)이다 (`RoomThemes`의 `chapelRoom`).
 - 방 하나의 환경은 `RoomThemes.Get(층, 방)`이 정한다: 테마(층별 약 15종: 병실, 수술실, 영안실, 보일러실 등)와 이름(층 안에서 유일), 바닥 질감 8종 x 벽 질감 6종 x 색조 6종 x 조명색 5종 x 파손 정도 4단계의 조합 (340개 방이 서로 겹치지 않게 고른다).
 - `EnvBuilder.cs`: 방마다 바닥·천장·벽 면(방별 메시)과 조명(색, 깜박임, 불 꺼진 방). `HospitalBuilder.cs`: 테마가 정한 소품을 방 크기에 맞는 자리에 놓는다 (좁은 방은 양쪽 긴 벽을 따라). 질감과 소품은 Varco로 만든다 (소품 FBX는 `Assets/Models/Props`).
 - 성능: 정적 배칭, `FloorVisibility`(플레이어 층과 위아래 한 층만 그리고 가까운 조명만 켠다). 소품은 NavMeshModifier로 걸을 수 없는 구역을 표시한 뒤 NavMesh를 굽는다.
 
 ## 추적자 (층마다 다른 모습)
 - 지하2 익사체(`Models/Chaser/Drowned`), 지하1 집도의(`Surgeon`), 1층 살덩이(`Models/Chaser`), 2층 구속복 환자(`Patient`), 3층 불탄 자(`Burned`). 폴더마다 `Chaser_Walk.fbx`, `Chaser_Run.fbx`. 층별 키와 폴더는 `Week1SceneBuilder.ChaserDirs`.
-- 추적자는 NavMesh 위로만 다녀서 벽을 통과하지 못한다. 문은 `ChaserDoorOpener`가 가까이 가면 열어 준다. 잠긴 문, 숨겨진 문, 전력이 필요한 문은 못 열고 `NavMeshObstacle`이 길을 막는다.
+- 추적자는 NavMesh 위로만 다녀서 벽을 통과하지 못한다. 문은 `ChaserDoorOpener`가 가까이 가면 열어 준다. 추적자가 연 문은 8초 뒤 스스로 닫힌다 (그때 추적자나 플레이어가 2.8m 안에 있으면 기다린다. 플레이어가 직접 여닫은 문은 그대로 둔다). 잠긴 문, 숨겨진 문, 전력이 필요한 문은 못 열고 `NavMeshObstacle`이 길을 막는다.
 
 ## 조작
 - WASD 이동, Shift 달리기, Ctrl/C 웅크리기, F 상호작용(문·서랍·열쇠 줍기·숨기), E 손전등, G 연막, Tab 인벤토리, M 큰 지도. 적을 공격할 수는 없다.
