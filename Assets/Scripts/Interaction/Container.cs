@@ -60,7 +60,10 @@ namespace Escape.Interaction
         {
             if (!isOpen) return "F: 서랍을 연다";
             if (Content != null)
+            {
+                if (Content.IsJunk) return "F: 살펴본다";
                 return "F: " + (Content.Type.HasValue ? ItemInfo.Label(Content.Type.Value) : "방 열쇠") + " 줍는다";
+            }
             return null;
         }
 
@@ -80,12 +83,31 @@ namespace Escape.Interaction
 
             if (Content == null) return;
 
+            if (Content.IsJunk)
+            {
+                who.Inventory.Say(JunkNote(Content.JunkName));   // 주울 수 없는 잡동사니: 살펴보기만 한다
+                return;
+            }
+
             if (Content.Type.HasValue) who.Inventory.Add(Content.Type.Value);
             else who.Inventory.AddRoomKey(Content.KeyId);
 
             Content = null;
             if (itemVisual != null) Destroy(itemVisual);
             itemVisual = null;
+        }
+
+        static string JunkNote(string name)
+        {
+            switch (name)
+            {
+                case "PillBottle": return "빈 약병이다. 라벨이 지워져 읽을 수 없다";
+                case "Syringe": return "녹슨 주사기다. 쓸 수 없다";
+                case "BandageRoll": return "얼룩진 붕대다. 쓸 데가 없다";
+                case "Notebook": return "눅눅한 수첩이다. 글씨가 번져 읽을 수 없다";
+                case "Scalpel": return "녹슨 메스다";
+                default: return "쓸모없는 물건이다";
+            }
         }
 
         void RaiseMetalAlarm()

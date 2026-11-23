@@ -54,6 +54,14 @@
 - 가져온 모델은 `Assets/Models/Chaser/`에 두고, 추적자 AI와 잡히는 연출(얼굴 클로즈업)에 사용한다
 - 걷기/달리기 클립은 몸이 향하는 방향이 달라서 씬 빌더가 측정한 보정 각도를 쓴다 (`ChaserAnimator`)
 
+## 서랍 물건, 숨는 곳, 잡동사니
+- 서랍 안 물건은 전부 Varco 모델이다 (`Assets/Models/Props/<이름>`: 열쇠 `RoomKey`, 조각 `KeyPiece`, 탈출 열쇠 `MasterKey`, 배터리, 천, 라이터, 쇠막대, 전선, 예비 손전등, 출입카드). 씬을 빌드할 때 `ItemBuilder.cs`가 `Assets/Resources/Items/*.prefab`으로 만들고, `ItemVisualFactory`가 실행 중에 불러 쓴다. 모델이 없으면 기본 도형으로 대신한다.
+- 열쇠류는 발광(emission)을 쓰지 않는다 (후처리에서 청록으로 틀어진다). 작은 점광원으로만 은은하게 비춘다.
+- 서랍의 약 92%에 무언가 들어 있다: 필요한 물건 외 나머지는 잡동사니(약병, 주사기, 붕대, 수첩, 메스)로 채운다. 잡동사니는 줍지 못하고 F로 살펴보기만 한다 (`ItemDrop.Junk`).
+- 숨는 곳: 옷장(철제 로커), 침대 옆에 더해 탁자·책상·검진대·이동 침대 밑, 욕조 안, 칸막이 뒤 (`HospitalBuilder.LowHideProps`). 숨는 동안 플레이어 충돌이 꺼지므로 소품 안으로 들어가도 된다.
+- 방 잡동사니(상자 더미, 걸레 양동이, 부서진 의자, 나무 상자, 의료 폐기물통)는 `BuildClutter`가 NavMesh를 굽기 전에 벽을 따라 놓는다 (문 앞과 기존 소품과 겹치는 자리는 피한다).
+- 새로 가져온 소품은 `Escape > Build Tower Scene`이 텍스처가 없으면 자동으로 준비한다 (`EnsureNewPropsReady`).
+
 ## 작업 방식
 - 스크립트는 `Assets/Scripts/` 아래에 두고, 입력은 Input System 패키지를 사용한다
 - 코드 수정 후 Unity 컴파일 오류가 없는지 확인한다

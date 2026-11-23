@@ -104,7 +104,16 @@ namespace Escape.Items
                 if (spot == null) break;
                 Place(spot, ItemDrop.Item(t), free);
             }
+
+            // 남은 서랍에는 잡동사니를 채운다 (약병, 주사기 등). 열었을 때 대부분 무언가 들어 있고, 일부만 비어 있다.
+            foreach (var c in free.ToList())
+            {
+                if (Random.value < 0.08f) continue;
+                Place(c, ItemDrop.Junk(JunkNames[Random.Range(0, JunkNames.Length)]), free);
+            }
         }
+
+        static readonly string[] JunkNames = { "PillBottle", "Syringe", "BandageRoll", "Notebook", "Scalpel" };
 
         static void Place(Container c, ItemDrop drop, List<Container> free)
         {

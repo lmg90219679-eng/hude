@@ -3,23 +3,93 @@ using UnityEngine;
 namespace Escape.Items
 {
     /// <summary>
-    /// 서랍을 열었을 때 안에 보이는 물건 모형을 만든다. 지금은 기본 도형으로 대충 알아볼 수 있게 만들고,
-    /// 나중에 Varco에서 만든 모델이 생기면 prefab 조회로 바꾼다.
+    /// 서랍을 열었을 때 안에 보이는 물건 모형을 만든다.
+    /// Varco로 만든 모델 prefab(Resources/Items/이름)이 있으면 그것을 쓰고, 없으면 기본 도형으로 대신한다.
+    /// 열쇠와 열쇠 조각은 어둠 속에서 눈에 띄게 은은히 빛난다.
     /// </summary>
     public static class ItemVisualFactory
     {
         static readonly Color Gold = new Color(1f, 0.78f, 0.2f);
         static readonly Color Steel = new Color(0.55f, 0.58f, 0.62f);
 
+        /// <summary>물건 종류 → Resources/Items 안의 prefab 이름.</summary>
+        public static string ModelName(ItemDrop drop)
+        {
+            if (drop.IsJunk) return drop.JunkName;
+            if (!drop.Type.HasValue) return "RoomKey";
+            switch (drop.Type.Value)
+            {
+                case ItemType.Battery: return "Battery";
+                case ItemType.Cloth: return "ClothRag";
+                case ItemType.Lighter: return "Lighter";
+                case ItemType.Crowbar: return "Crowbar";
+                case ItemType.Wire: return "WireCoil";
+                case ItemType.SpareFlashlight: return "SpareFlashlight";
+                case ItemType.SecurityCard: return "SecurityCard";
+                case ItemType.MasterKey: return "MasterKey";
+                default: return ItemInfo.IsPiece(drop.Type.Value) ? "KeyPiece" : null;
+            }
+        }
+
         public static GameObject Create(ItemDrop drop, Transform parent)
         {
             var root = new GameObject("ItemVisual");
             root.transform.SetParent(parent, false);
 
+            string modelName = ModelName(drop);
+            var prefab = modelName != null ? Resources.Load<GameObject>("Items/" + modelName) : null;
+            if (prefab != null)
+            {
+                var model = Object.Instantiate(prefab, root.transform);
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);   // 서랍마다 놓인 방향이 조금씩 다르다
+                foreach (var c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+
+                if (!drop.IsJunk && (!drop.Type.HasValue || drop.Type.Value == ItemType.MasterKey || ItemInfo.IsPiece(drop.Type.Value)))
+                    AddGlow(model, GlowColor(drop));
+                return root;
+            }
+
+            BuildPrimitive(drop, root);
+            return root;
+        }
+
+        static Color GlowColor(ItemDrop drop)
+        {
+            if (!drop.Type.HasValue) return Gold;                                   // 방 열쇠: 금색
+            if (drop.Type.Value == ItemType.MasterKey) return new Color(0.7f, 0.9f, 1f);
+            int index = (int)drop.Type.Value - (int)ItemType.Piece0;               // 탈출 열쇠 조각: 층마다 다른 색
+            return Color.HSVToRGB(Mathf.Clamp01(index / 5f), 0.6f, 1f);
+        }
+
+        /// <summary>아주 작은 점광원으로 열쇠를 은은하게 비춘다.</summary>
+        static void AddGlow(GameObject model, Color c)
+        {
+            // 발광(emission)은 쓰지 않는다: 후처리에서 색이 청록으로 틀어진다. 점광원만으로 은은하게 눈에 띄게 한다.
+            var go = new GameObject("Glow");
+            go.transform.SetParent(model.transform.parent, false);
+            go.transform.localPosition = new Vector3(0f, 0.12f, 0f);
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = c;
+            l.intensity = 0.3f;
+            l.range = 1.6f;
+            l.shadows = LightShadows.None;
+        }
+
+        // ---------- 모델이 없을 때 쓰는 기본 도형 ----------
+
+        static void BuildPrimitive(ItemDrop drop, GameObject root)
+        {
+            if (drop.IsJunk)
+            {
+                Part(root, PrimitiveType.Cube, new Vector3(0, 0.03f, 0), new Vector3(0.08f, 0.06f, 0.08f), new Color(0.4f, 0.35f, 0.3f), Quaternion.identity);
+                return;
+            }
             if (!drop.Type.HasValue)
             {
                 BuildRoomKey(root.transform);
-                return root;
+                return;
             }
 
             switch (drop.Type.Value)
@@ -54,7 +124,6 @@ namespace Escape.Items
                 default:
                     if (ItemInfo.IsPiece(drop.Type.Value) || drop.Type.Value == ItemType.MasterKey)
                     {
-                        // 탈출 열쇠 조각: 층마다 다른 색으로 어둠 속에서 은은하게 빛나는 파편
                         int index = (int)drop.Type.Value - (int)ItemType.Piece0;
                         Color c = Color.HSVToRGB(Mathf.Clamp01(index / 5f), 0.7f, 1f);
                         Part(root, PrimitiveType.Cube, new Vector3(0, 0.05f, 0), new Vector3(0.1f, 0.1f, 0.03f), c, Quaternion.Euler(30, 45, 20), glow: c);
@@ -65,7 +134,6 @@ namespace Escape.Items
                     }
                     break;
             }
-            return root;
         }
 
         static void BuildRoomKey(Transform t)

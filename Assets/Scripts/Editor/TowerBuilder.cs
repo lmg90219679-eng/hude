@@ -92,6 +92,8 @@ namespace Escape.EditorTools
             }
 
             SetupChaserImport();
+            EnsureNewPropsReady();
+            BuildItemPrefabs();
             BuildMenuScene();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -119,6 +121,7 @@ namespace Escape.EditorTools
             for (int f = 0; f < TowerLayout.Floors; f++) BuildFurniture(map.transform, f);
             BuildHospitalRooms(map.transform);
             BuildDecayProps(map.transform);
+            BuildClutter(map.transform);
             BuildNavMeshForTower(map);
 
             // 플레이어: 1층 북쪽 가운데 방(상담실)에서 시작. 계단은 복도 양 끝 방화문 너머에 있어서 직접 찾아야 한다

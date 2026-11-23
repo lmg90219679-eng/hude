@@ -55,7 +55,12 @@ namespace Escape.Items
         public ItemType? Type;      // null이면 방 열쇠
         public string KeyId;        // 방 열쇠일 때 문 번호 (예: "2F-3")
 
+        public string JunkName;     // 값이 있으면 주울 수 없는 잡동사니 (약병, 주사기 등): 서랍 안에 보이기만 한다
+
+        public bool IsJunk => !string.IsNullOrEmpty(JunkName);
+
         public static ItemDrop Item(ItemType t) => new ItemDrop { Type = t };
         public static ItemDrop RoomKey(string id) => new ItemDrop { Type = null, KeyId = id };
+        public static ItemDrop Junk(string name) => new ItemDrop { Type = null, JunkName = name };
     }
 }

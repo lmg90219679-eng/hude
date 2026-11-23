@@ -97,6 +97,11 @@ namespace Escape.EditorTools
             { "Refrigerator",  new PropSpec(1.9f,  0.9f) },
             { "VendingMachine", new PropSpec(1.85f, 1.0f) },
             { "Altar",         new PropSpec(1.3f,  1.8f) },
+            { "CardboardBoxes", new PropSpec(1.0f, 0.9f) },
+            { "MopBucket",     new PropSpec(1.2f,  0.7f) },
+            { "BrokenChair",   new PropSpec(0.9f,  0.8f) },
+            { "WoodenCrate",   new PropSpec(0.75f, 0.85f) },
+            { "MedicalWasteBin", new PropSpec(0.95f, 0.65f) },
         };
 
         static readonly string[] WideAnchors = { "NW", "NE", "SW", "SE", "NM", "SM" };
@@ -265,7 +270,43 @@ namespace Escape.EditorTools
             MarkNotWalkable(holder.gameObject);
 
             if (model == "HospitalBed" && anchor.HasValue) AddBedHidingSpot(holder, anchor.Value, TowerLayout.FloorY(floor));
+            else if (LowHideProps.TryGetValue(model, out var hide)) AddCenterHidingSpot(holder, faceYaw, TowerLayout.FloorY(floor), hide.prompt, hide.eye);
             return true;
+        }
+
+        // 숨을 수 있는 소품: 탁자·책상·검진대 밑, 욕조 안, 이동 침대 밑, 칸막이 뒤 (옷장, 침대와 함께 섞여 있다)
+        static readonly Dictionary<string, (string prompt, float eye)> LowHideProps = new Dictionary<string, (string, float)>
+        {
+            { "DiningTable", ("탁자 밑에 숨는다", 0.55f) },
+            { "OfficeDesk", ("책상 밑에 숨는다", 0.55f) },
+            { "ExamTable", ("검진대 밑에 숨는다", 0.55f) },
+            { "Gurney", ("이동 침대 밑에 숨는다", 0.55f) },
+            { "Bathtub", ("욕조 안에 숨는다", 0.55f) },
+            { "FoldingScreen", ("칸막이 뒤에 숨는다", -1f) },
+        };
+
+        /// <summary>소품 한가운데(밑, 안, 뒤)에 숨는다. 플레이어는 숨는 동안 충돌이 꺼지므로 소품 안에 들어가도 된다. 방 안쪽으로 빠져나온다.</summary>
+        static void AddCenterHidingSpot(Transform holder, float faceYaw, float floorY, string prompt, float eye)
+        {
+            var fwd = Quaternion.Euler(0f, faceYaw, 0f) * Vector3.forward;
+            bool behind = eye < 0f;   // 칸막이: 앞이 아니라 뒤쪽에 선다
+
+            var hide = new GameObject("HidePoint").transform;
+            hide.SetParent(holder);
+            hide.position = new Vector3(holder.position.x, floorY + 0.1f, holder.position.z) + (behind ? -fwd * 0.55f : Vector3.zero);
+            hide.rotation = Quaternion.Euler(0f, faceYaw, 0f);
+
+            var exit = new GameObject("ExitPoint").transform;
+            exit.SetParent(holder);
+            exit.position = new Vector3(holder.position.x, floorY + 0.1f, holder.position.z) + fwd * 1.9f;
+
+            var spot = holder.gameObject.AddComponent<HidingSpot>();
+            var so = new SerializedObject(spot);
+            so.FindProperty("hidePoint").objectReferenceValue = hide;
+            so.FindProperty("exitPoint").objectReferenceValue = exit;
+            so.FindProperty("eyeHeight").floatValue = eye;
+            so.FindProperty("prompt").stringValue = prompt;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>침대 옆 바닥(벽 쪽)에 몸을 낮춰 숨는다. 눈높이를 낮추고, 방 안쪽으로 빠져나온다.</summary>
