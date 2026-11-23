@@ -19,10 +19,12 @@ namespace Escape.EditorTools
         {
             "FloorMoss.png", "FloorDebris.png", "FloorTileOld.png", "FloorConcrete.png",
             "FloorWood.png", "FloorLino.png", "FloorCarpet.png", "FloorBlood.png",
+            "FloorParquet.png", "FloorRubber.png", "FloorMosaic.png", "FloorGrate.png", "FloorFlooded.png", "FloorBurned.png", "FloorGravel.png",
         };
         static readonly string[] WallFiles =
         {
             "WallDecay.png", "WallTile.png", "WallBlue.png", "WallWood.png", "WallGraffiti.png", "WallPaper.png",
+            "WallBunker.png", "WallStripe.png", "WallMold.png", "WallBrick.png", "WallPanel.png", "WallBlood.png",
         };
 
         /// <summary>질감 + 색조 재질. 파일이 없으면 대체 질감을 쓴다.</summary>

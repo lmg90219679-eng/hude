@@ -102,6 +102,30 @@ namespace Escape.EditorTools
             { "BrokenChair",   new PropSpec(0.9f,  0.8f) },
             { "WoodenCrate",   new PropSpec(0.75f, 0.85f) },
             { "MedicalWasteBin", new PropSpec(0.95f, 0.65f) },
+            { "CrashCart",     new PropSpec(1.0f,  0.8f) },
+            { "Incubator",     new PropSpec(1.1f,  1.0f) },
+            { "LabBench",      new PropSpec(1.0f,  1.8f) },
+            { "AutopsyTable",  new PropSpec(0.95f, 2.0f) },
+            { "Coffin",        new PropSpec(0.95f, 2.0f) },
+            { "Skeleton",      new PropSpec(1.8f,  0.8f) },
+            { "Crutches",      new PropSpec(1.3f,  0.7f) },
+            { "FireExtinguisher", new PropSpec(1.2f, 0.5f) },
+            { "WaterCooler",   new PropSpec(1.2f,  0.5f) },
+            { "TVCart",        new PropSpec(1.6f,  0.8f) },
+            { "RockingChair",  new PropSpec(1.0f,  0.8f) },
+            { "ToyChest",      new PropSpec(0.7f,  0.8f) },
+            { "Piano",         new PropSpec(1.4f,  1.6f, -90f) },
+            { "Generator",     new PropSpec(1.4f,  1.8f) },
+            { "PipeManifold",  new PropSpec(2.2f,  1.0f) },
+            { "LaundryCart",   new PropSpec(1.0f,  1.0f) },
+            { "FoodTrolley",   new PropSpec(1.3f,  0.9f) },
+            { "Safe",          new PropSpec(1.1f,  0.8f, 90f) },
+            { "Armchair",      new PropSpec(0.9f,  0.9f) },
+            { "Sofa",          new PropSpec(0.9f,  1.9f) },
+            { "KitchenStove",  new PropSpec(0.95f, 1.3f) },
+            { "CrackedMirror", new PropSpec(1.9f,  0.9f) },
+            { "Statue",        new PropSpec(1.8f,  0.8f) },
+            { "Confessional",  new PropSpec(2.3f,  1.4f) },
         };
 
         static readonly string[] WideAnchors = { "NW", "NE", "SW", "SE", "NM", "SM" };
@@ -134,7 +158,8 @@ namespace Escape.EditorTools
             int count = narrow ? 3 + rng.Next(3) : 4 + rng.Next(3);
             for (int i = 0; i < count && i < names.Count; i++)
             {
-                string pick = (i == 0 && env.theme == "예배실") ? "Altar" : env.props[rng.Next(env.props.Length)];   // 예배실에는 제단이 반드시 놓인다
+                string pick = env.props[rng.Next(env.props.Length)];
+                if (env.theme == "예배실" && i < 3) pick = i == 0 ? "Altar" : i == 1 ? "Statue" : "Confessional";   // 예배실에는 제단, 성상, 고해소가 반드시 놓인다
                 list.Add(pick + ":" + names[i]);
             }
             return list;
@@ -158,7 +183,7 @@ namespace Escape.EditorTools
             foreach (var e in Edges) avoid.Add(new Vector2(e.x, e.z));
 
             var rng = new System.Random(floor * 131 + room * 17 + 3);
-            string[] models = { "WaitingBench", "Wheelchair", "IVStand", "MedicineCart", "WaitingBench", "FoldingScreen" };
+            string[] models = { "WaitingBench", "Wheelchair", "IVStand", "MedicineCart", "WaitingBench", "FoldingScreen", "FireExtinguisher", "WaterCooler", "Crutches", "CrashCart" };
             int k = 0;
             for (float x = r.xMin + 2.2f; x < r.xMax - 1.2f; x += 4.6f + (float)rng.NextDouble() * 1.8f)
             {
@@ -286,6 +311,10 @@ namespace Escape.EditorTools
             { "Gurney", ("이동 침대 밑에 숨는다", 0.55f) },
             { "Bathtub", ("욕조 안에 숨는다", 0.55f) },
             { "FoldingScreen", ("칸막이 뒤에 숨는다", -1f) },
+            { "Coffin", ("관 뒤에 숨는다", 0.55f) },
+            { "LabBench", ("실험대 밑에 숨는다", 0.55f) },
+            { "LaundryCart", ("세탁 카트 뒤에 숨는다", 0.55f) },
+            { "Confessional", ("고해소 안에 숨는다", 1.5f) },
         };
 
         /// <summary>소품 한가운데(밑, 안, 뒤)에 숨는다. 플레이어는 숨는 동안 충돌이 꺼지므로 소품 안에 들어가도 된다. 방 안쪽으로 빠져나온다.</summary>

@@ -21,7 +21,7 @@ namespace Escape.Core
 
     public static class RoomThemes
     {
-        public const int FloorStyles = 8, WallStyles = 6, Tints = 6, LightColors = 5;
+        public const int FloorStyles = 15, WallStyles = 12, Tints = 6, LightColors = 5;
 
         public static readonly Color[] TintColors =
         {
@@ -47,105 +47,137 @@ namespace Escape.Core
         // 층마다 테마 목록. 같은 테마가 여러 번 나올 수 있다 (병실처럼). 모든 방은 이 중 하나를 갖는다.
         // 바닥/벽 번호: 바닥 0 이끼 1 파편 2 낡은 타일 3 얼룩 콘크리트 4 낡은 마룻바닥 5 녹색 리놀륨 6 곰팡이 카펫 7 핏자국 타일
         //               벽  0 벗겨진 페인트 1 타일 2 푸른 페인트 3 나무 패널 4 낙서 콘크리트 5 빛바랜 벽지
+        // 추가 바닥 8 헤링본 마룻바닥 9 고무 바닥 10 모자이크 타일 11 철판 12 물 고인 콘크리트 13 불탄 마루 14 자갈·잔해
+        // 추가 벽  6 벙커 콘크리트 7 두 톤 페인트 8 곰팡이 9 붉은 벽돌 10 짙은 나무 판넬 11 핏자국 벽
         static readonly Theme[][] Pools =
         {
             // ---------- 지하2 ----------
             new[]
             {
-                new Theme("세탁실", P("WashingMachine", "MetalShelf", "MedicineCart"), I(2, 3), I(1, 4), false),
-                new Theme("보일러실", P("Boiler", "MetalShelf", "OxygenTank"), I(3, 1), I(4, 0), false),
-                new Theme("기계실", P("Boiler", "OxygenTank", "MetalShelf"), I(3, 1), I(4, 1), false),
-                new Theme("배전실", P("MetalShelf", "FilingCabinet", "OxygenTank"), I(3, 2), I(4, 0), false),
+                new Theme("세탁실", P("WashingMachine", "MetalShelf", "MedicineCart", "LaundryCart"), I(2, 3), I(1, 4), false),
+                new Theme("보일러실", P("Boiler", "MetalShelf", "OxygenTank", "PipeManifold", "Generator"), I(3, 1), I(4, 0), false),
+                new Theme("기계실", P("Boiler", "OxygenTank", "MetalShelf", "PipeManifold", "Generator"), I(3, 1), I(4, 1), false),
+                new Theme("배전실", P("MetalShelf", "FilingCabinet", "OxygenTank", "Generator"), I(3, 2), I(4, 0), false),
                 new Theme("창고", P("MetalShelf", "MetalShelf", "MedicineCart"), I(3, 1), I(0, 4), false),
                 new Theme("창고", P("MetalShelf", "Wheelchair", "Gurney"), I(1, 3), I(0, 1), false),
-                new Theme("폐기물실", P("MetalShelf", "Wheelchair", "OxygenTank"), I(1, 7), I(4, 0), false),
+                new Theme("폐기물실", P("MetalShelf", "Wheelchair", "OxygenTank", "LaundryCart", "Generator"), I(1, 7), I(4, 0), false),
                 new Theme("냉동 창고", P("MorgueUnit", "MetalShelf"), I(2, 7), I(1, 4), false),
-                new Theme("환기실", P("OxygenTank", "MetalShelf", "Boiler"), I(3, 2), I(4, 1), false),
+                new Theme("환기실", P("OxygenTank", "MetalShelf", "Boiler", "PipeManifold"), I(3, 2), I(4, 1), false),
                 new Theme("수조실", P("Sink", "OxygenTank", "MetalShelf"), I(2, 0), I(1, 0), false),
-                new Theme("직원 휴게실", P("WaitingBench", "OfficeDesk", "Bookshelf"), I(4, 6), I(3, 5), false),
-                new Theme("정비실", P("MetalShelf", "OfficeDesk", "MedicineCart"), I(3, 1), I(2, 4), false),
-                new Theme("탈의실", P("SteelLocker", "WaitingBench", "Toilet", "Sink"), I(2, 3), I(1, 2), false),
-                new Theme("취사장", P("KitchenCounter", "Refrigerator", "DiningTable", "MetalShelf"), I(2, 5), I(1, 0), false),
+                new Theme("직원 휴게실", P("WaitingBench", "OfficeDesk", "Bookshelf", "Sofa", "TVCart", "WaterCooler"), I(4, 6), I(3, 5), false),
+                new Theme("정비실", P("MetalShelf", "OfficeDesk", "MedicineCart", "PipeManifold", "Generator"), I(3, 1), I(2, 4), false),
+                new Theme("탈의실", P("SteelLocker", "WaitingBench", "Toilet", "Sink", "CrackedMirror"), I(2, 3), I(1, 2), false),
+                new Theme("취사장", P("KitchenCounter", "Refrigerator", "DiningTable", "MetalShelf", "KitchenStove", "FoodTrolley"), I(2, 5), I(1, 0), false),
             },
             // ---------- 지하1 ----------
             new[]
             {
-                new Theme("영안실", P("MorgueUnit", "ExamTable", "FoldingScreen"), I(2, 7), I(1, 2), false),
-                new Theme("안치실", P("MorgueUnit", "MorgueUnit", "MetalShelf"), I(2, 3), I(1, 4), false),
-                new Theme("방사선실", P("XRayMachine", "FoldingScreen", "MedicineCart"), I(2, 5), I(1, 2), false),
-                new Theme("MRI실", P("XRayMachine", "ExamTable", "OxygenTank"), I(5, 2), I(2, 1), false),
-                new Theme("검사실", P("ExamTable", "MedicineCart", "FoldingScreen"), I(5, 2), I(2, 0), false),
-                new Theme("병리실", P("ExamTable", "Sink", "MetalShelf"), I(2, 7), I(1, 0), false),
-                new Theme("소독실", P("Sink", "MetalShelf", "MedicineCart"), I(2, 5), I(1, 2), false),
-                new Theme("격리실", P("HospitalBed", "FoldingScreen", "IVStand"), I(7, 1), I(0, 2), false),
+                new Theme("영안실", P("MorgueUnit", "ExamTable", "FoldingScreen", "AutopsyTable", "Coffin"), I(2, 7), I(1, 2), false),
+                new Theme("안치실", P("MorgueUnit", "MorgueUnit", "MetalShelf", "Coffin"), I(2, 3), I(1, 4), false),
+                new Theme("방사선실", P("XRayMachine", "FoldingScreen", "MedicineCart", "CrashCart"), I(2, 5), I(1, 2), false),
+                new Theme("MRI실", P("XRayMachine", "ExamTable", "OxygenTank", "CrashCart"), I(5, 2), I(2, 1), false),
+                new Theme("검사실", P("ExamTable", "MedicineCart", "FoldingScreen", "Skeleton", "LabBench"), I(5, 2), I(2, 0), false),
+                new Theme("병리실", P("ExamTable", "Sink", "MetalShelf", "LabBench", "AutopsyTable"), I(2, 7), I(1, 0), false),
+                new Theme("소독실", P("Sink", "MetalShelf", "MedicineCart", "CrashCart"), I(2, 5), I(1, 2), false),
+                new Theme("격리실", P("HospitalBed", "FoldingScreen", "IVStand", "CrackedMirror", "Crutches"), I(7, 1), I(0, 2), false),
                 new Theme("혈액 보관실", P("MetalShelf", "IVStand", "MedicineCart"), I(2, 5), I(1, 2), false),
                 new Theme("약품 창고", P("MetalShelf", "MetalShelf", "MedicineCart"), I(3, 1), I(0, 4), false),
                 new Theme("중앙 공급실", P("MetalShelf", "MedicineCart", "Gurney"), I(3, 5), I(2, 4), false),
                 new Theme("장비 창고", P("Gurney", "Wheelchair", "OxygenTank"), I(3, 1), I(0, 4), false),
-                new Theme("부검실", P("ExamTable", "SurgicalLamp", "Sink"), I(7, 2), I(1, 0), false),
+                new Theme("부검실", P("ExamTable", "SurgicalLamp", "Sink", "AutopsyTable"), I(7, 2), I(1, 0), false),
                 new Theme("기록 보관실", P("FilingCabinet", "FilingCabinet", "Bookshelf"), I(4, 6), I(3, 5), false),
             },
             // ---------- 1층 ----------
             new[]
             {
-                new Theme("접수실", P("NurseCounter", "WaitingBench", "FilingCabinet"), I(2, 5), I(2, 5)),
-                new Theme("약국", P("MetalShelf", "NurseCounter", "MedicineCart"), I(5, 2), I(2, 1)),
-                new Theme("응급 처치실", P("Gurney", "IVStand", "MedicineCart"), I(7, 2), I(0, 1)),
-                new Theme("진료실", P("OfficeDesk", "ExamTable", "FoldingScreen"), I(4, 5), I(2, 5)),
-                new Theme("진료실", P("OfficeDesk", "ExamTable", "Bookshelf"), I(6, 4), I(3, 2)),
-                new Theme("상담실", P("OfficeDesk", "WaitingBench", "Bookshelf"), I(6, 4), I(5, 3)),
-                new Theme("원무과", P("OfficeDesk", "FilingCabinet", "FilingCabinet"), I(5, 6), I(2, 5)),
+                new Theme("접수실", P("NurseCounter", "WaitingBench", "FilingCabinet", "WaterCooler", "Sofa"), I(2, 5), I(2, 5)),
+                new Theme("약국", P("MetalShelf", "NurseCounter", "MedicineCart", "CrashCart"), I(5, 2), I(2, 1)),
+                new Theme("응급 처치실", P("Gurney", "IVStand", "MedicineCart", "CrashCart", "CrashCart"), I(7, 2), I(0, 1)),
+                new Theme("진료실", P("OfficeDesk", "ExamTable", "FoldingScreen", "Armchair", "Skeleton", "CrackedMirror"), I(4, 5), I(2, 5)),
+                new Theme("진료실", P("OfficeDesk", "ExamTable", "Bookshelf", "Armchair", "Skeleton", "CrackedMirror"), I(6, 4), I(3, 2)),
+                new Theme("상담실", P("OfficeDesk", "WaitingBench", "Bookshelf", "Armchair", "Safe"), I(6, 4), I(5, 3)),
+                new Theme("원무과", P("OfficeDesk", "FilingCabinet", "FilingCabinet", "WaterCooler", "Safe"), I(5, 6), I(2, 5)),
                 new Theme("수납 창구", P("NurseCounter", "FilingCabinet", "WaitingBench"), I(2, 5), I(2, 5)),
                 new Theme("의무 기록실", P("FilingCabinet", "FilingCabinet", "Bookshelf"), I(4, 6), I(3, 5)),
-                new Theme("물리치료실", P("ExamTable", "Wheelchair", "FoldingScreen"), I(5, 4), I(2, 0)),
-                new Theme("대기실", P("WaitingBench", "VendingMachine", "WaitingBench", "Wheelchair"), I(1, 0), I(0, 5)),
-                new Theme("매점", P("VendingMachine", "Refrigerator", "MetalShelf", "WaitingBench"), I(2, 5), I(5, 2)),
-                new Theme("구내식당", P("DiningTable", "KitchenCounter", "DiningTable"), I(2, 4), I(1, 0)),
-                new Theme("경비실", P("OfficeDesk", "Bookshelf", "FilingCabinet"), I(3, 6), I(4, 3)),
-                new Theme("도서실", P("Bookshelf", "Bookshelf", "DiningTable"), I(4, 6), I(3, 5)),
-                new Theme("예배실", P("Altar", "WaitingBench", "WaitingBench", "WaitingBench"), I(4, 0), I(5, 0)),
+                new Theme("물리치료실", P("ExamTable", "Wheelchair", "FoldingScreen", "Crutches", "Skeleton"), I(5, 4), I(2, 0)),
+                new Theme("대기실", P("WaitingBench", "VendingMachine", "WaitingBench", "Wheelchair", "Sofa", "WaterCooler", "TVCart"), I(1, 0), I(0, 5)),
+                new Theme("매점", P("VendingMachine", "Refrigerator", "MetalShelf", "WaitingBench", "WaterCooler"), I(2, 5), I(5, 2)),
+                new Theme("구내식당", P("DiningTable", "KitchenCounter", "DiningTable", "KitchenStove", "FoodTrolley"), I(2, 4), I(1, 0)),
+                new Theme("경비실", P("OfficeDesk", "Bookshelf", "FilingCabinet", "TVCart", "Safe", "Armchair"), I(3, 6), I(4, 3)),
+                new Theme("도서실", P("Bookshelf", "Bookshelf", "DiningTable", "Armchair", "RockingChair", "CrackedMirror"), I(4, 6), I(3, 5)),
+                new Theme("예배실", P("Altar", "WaitingBench", "WaitingBench", "WaitingBench", "Statue", "Confessional", "Piano"), I(4, 0), I(5, 0)),
             },
             // ---------- 2층 ----------
             new[]
             {
-                new Theme("병실", P("HospitalBed", "HospitalBed", "IVStand", "FoldingScreen"), I(0, 1, 4), I(0, 2, 5)),
-                new Theme("병실", P("HospitalBed", "HospitalBed", "HospitalBed", "IVStand"), I(5, 2, 7), I(2, 0, 1)),
-                new Theme("병실", P("HospitalBed", "IVStand", "MedicineCart", "FoldingScreen"), I(1, 4, 6), I(5, 0, 3)),
-                new Theme("병실", P("HospitalBed", "HospitalBed", "Wheelchair", "IVStand"), I(0, 5, 7), I(2, 4, 0)),
-                new Theme("병실", P("HospitalBed", "HospitalBed", "OxygenTank", "FoldingScreen"), I(1, 3, 6), I(0, 5, 1)),
-                new Theme("소아 병실", P("Crib", "Crib", "IVStand", "FoldingScreen"), I(5, 6, 0), I(5, 2, 0)),
-                new Theme("처치실", P("ExamTable", "MedicineCart", "IVStand"), I(2, 5, 7), I(1, 2, 0)),
-                new Theme("주사실", P("MedicineCart", "IVStand", "WaitingBench"), I(5, 2, 1), I(2, 0, 5)),
-                new Theme("면회실", P("WaitingBench", "DiningTable", "Bookshelf"), I(4, 6, 1), I(3, 5, 0)),
-                new Theme("회복실", P("HospitalBed", "Gurney", "IVStand"), I(5, 7, 1), I(2, 0, 1)),
-                new Theme("격리 병실", P("HospitalBed", "FoldingScreen", "OxygenTank"), I(7, 1, 3), I(0, 4, 2)),
-                new Theme("샤워실", P("Bathtub", "Sink", "Toilet"), I(2, 7, 1), I(1, 0, 2)),
-                new Theme("급식실", P("KitchenCounter", "Refrigerator", "DiningTable", "MetalShelf"), I(2, 5, 4), I(1, 0, 5)),
-                new Theme("의국", P("OfficeDesk", "Bookshelf", "HospitalBed"), I(4, 6, 5), I(3, 5, 2)),
-                new Theme("환자 휴게실", P("WaitingBench", "DiningTable", "Wheelchair"), I(6, 4, 1), I(5, 3, 0)),
-                new Theme("린넨실", P("MetalShelf", "MetalShelf", "WashingMachine"), I(3, 2, 1), I(1, 0, 4)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "IVStand", "FoldingScreen", "Crutches", "FireExtinguisher", "TVCart"), I(0, 1, 4), I(0, 2, 5)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "HospitalBed", "IVStand", "Crutches", "FireExtinguisher", "TVCart"), I(5, 2, 7), I(2, 0, 1)),
+                new Theme("병실", P("HospitalBed", "IVStand", "MedicineCart", "FoldingScreen", "Crutches", "FireExtinguisher", "TVCart"), I(1, 4, 6), I(5, 0, 3)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "Wheelchair", "IVStand", "Crutches", "FireExtinguisher", "TVCart"), I(0, 5, 7), I(2, 4, 0)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "OxygenTank", "FoldingScreen", "Crutches", "FireExtinguisher", "TVCart"), I(1, 3, 6), I(0, 5, 1)),
+                new Theme("소아 병실", P("Crib", "Crib", "IVStand", "FoldingScreen", "ToyChest", "RockingChair", "Incubator"), I(5, 6, 0), I(5, 2, 0)),
+                new Theme("처치실", P("ExamTable", "MedicineCart", "IVStand", "CrashCart"), I(2, 5, 7), I(1, 2, 0)),
+                new Theme("주사실", P("MedicineCart", "IVStand", "WaitingBench", "CrashCart", "WaterCooler"), I(5, 2, 1), I(2, 0, 5)),
+                new Theme("면회실", P("WaitingBench", "DiningTable", "Bookshelf", "Sofa", "Piano", "Armchair"), I(4, 6, 1), I(3, 5, 0)),
+                new Theme("회복실", P("HospitalBed", "Gurney", "IVStand", "CrashCart"), I(5, 7, 1), I(2, 0, 1)),
+                new Theme("격리 병실", P("HospitalBed", "FoldingScreen", "OxygenTank", "CrackedMirror"), I(7, 1, 3), I(0, 4, 2)),
+                new Theme("샤워실", P("Bathtub", "Sink", "Toilet", "CrackedMirror"), I(2, 7, 1), I(1, 0, 2)),
+                new Theme("급식실", P("KitchenCounter", "Refrigerator", "DiningTable", "MetalShelf", "KitchenStove", "FoodTrolley"), I(2, 5, 4), I(1, 0, 5)),
+                new Theme("의국", P("OfficeDesk", "Bookshelf", "HospitalBed", "Skeleton", "Armchair"), I(4, 6, 5), I(3, 5, 2)),
+                new Theme("환자 휴게실", P("WaitingBench", "DiningTable", "Wheelchair", "Sofa", "TVCart", "Piano", "RockingChair"), I(6, 4, 1), I(5, 3, 0)),
+                new Theme("린넨실", P("MetalShelf", "MetalShelf", "WashingMachine", "LaundryCart", "LaundryCart"), I(3, 2, 1), I(1, 0, 4)),
             },
             // ---------- 3층 ----------
             new[]
             {
-                new Theme("병실", P("HospitalBed", "HospitalBed", "IVStand", "FoldingScreen"), I(1, 4, 0), I(0, 2, 5)),
-                new Theme("병실", P("HospitalBed", "IVStand", "Wheelchair", "MedicineCart"), I(5, 6, 7), I(2, 4, 0)),
-                new Theme("병실", P("HospitalBed", "HospitalBed", "OxygenTank", "FoldingScreen"), I(0, 3, 1), I(5, 0, 1)),
-                new Theme("병실", P("HospitalBed", "HospitalBed", "HospitalBed", "IVStand"), I(2, 5, 4), I(0, 2, 3)),
-                new Theme("수술실", P("OperatingTable", "SurgicalLamp", "MedicineCart", "Sink"), I(7, 2, 5), I(1, 2, 0), false),
-                new Theme("수술실", P("OperatingTable", "SurgicalLamp", "OxygenTank", "IVStand"), I(2, 7, 5), I(1, 2, 4), false),
-                new Theme("수술 준비실", P("Sink", "MedicineCart", "SurgicalLamp", "Gurney"), I(2, 5, 7), I(1, 2, 0), false),
-                new Theme("중환자실", P("HospitalBed", "IVStand", "OxygenTank", "FoldingScreen"), I(5, 7, 1), I(2, 0, 1)),
-                new Theme("마취실", P("OxygenTank", "MedicineCart", "Gurney", "SurgicalLamp"), I(5, 2, 7), I(2, 1, 0), false),
-                new Theme("원장실", P("OfficeDesk", "Bookshelf", "FilingCabinet", "WaitingBench"), I(4, 6, 5), I(3, 5, 2)),
-                new Theme("회의실", P("DiningTable", "Bookshelf", "FilingCabinet"), I(6, 4, 5), I(3, 5, 0)),
-                new Theme("연구실", P("ExamTable", "Bookshelf", "MetalShelf", "Sink"), I(5, 2, 3), I(1, 2, 0)),
-                new Theme("정신과 격리실", P("HospitalBed", "FoldingScreen"), I(7, 1, 3), I(0, 4, 2), false),
-                new Theme("VIP 병실", P("HospitalBed", "WaitingBench", "Wheelchair", "Bookshelf"), I(4, 6, 5), I(5, 3, 2)),
-                new Theme("분만실", P("HospitalBed", "Crib", "IVStand", "Sink"), I(5, 7, 2), I(2, 1, 0)),
-                new Theme("재활실", P("ExamTable", "Wheelchair", "FoldingScreen", "WaitingBench"), I(4, 6, 5), I(5, 0, 2)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "IVStand", "FoldingScreen", "Crutches", "FireExtinguisher", "TVCart"), I(1, 4, 0), I(0, 2, 5)),
+                new Theme("병실", P("HospitalBed", "IVStand", "Wheelchair", "MedicineCart", "Crutches", "FireExtinguisher", "TVCart"), I(5, 6, 7), I(2, 4, 0)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "OxygenTank", "FoldingScreen", "Crutches", "FireExtinguisher", "TVCart"), I(0, 3, 1), I(5, 0, 1)),
+                new Theme("병실", P("HospitalBed", "HospitalBed", "HospitalBed", "IVStand", "Crutches", "FireExtinguisher", "TVCart"), I(2, 5, 4), I(0, 2, 3)),
+                new Theme("수술실", P("OperatingTable", "SurgicalLamp", "MedicineCart", "Sink", "CrashCart", "Skeleton"), I(7, 2, 5), I(1, 2, 0), false),
+                new Theme("수술실", P("OperatingTable", "SurgicalLamp", "OxygenTank", "IVStand", "CrashCart", "Skeleton"), I(2, 7, 5), I(1, 2, 4), false),
+                new Theme("수술 준비실", P("Sink", "MedicineCart", "SurgicalLamp", "Gurney", "CrashCart"), I(2, 5, 7), I(1, 2, 0), false),
+                new Theme("중환자실", P("HospitalBed", "IVStand", "OxygenTank", "FoldingScreen", "CrashCart", "FireExtinguisher"), I(5, 7, 1), I(2, 0, 1)),
+                new Theme("마취실", P("OxygenTank", "MedicineCart", "Gurney", "SurgicalLamp", "CrashCart"), I(5, 2, 7), I(2, 1, 0), false),
+                new Theme("원장실", P("OfficeDesk", "Bookshelf", "FilingCabinet", "WaitingBench", "Armchair", "Safe", "CrackedMirror", "Piano"), I(4, 6, 5), I(3, 5, 2)),
+                new Theme("회의실", P("DiningTable", "Bookshelf", "FilingCabinet", "Armchair", "Safe"), I(6, 4, 5), I(3, 5, 0)),
+                new Theme("연구실", P("ExamTable", "Bookshelf", "MetalShelf", "Sink", "LabBench", "Skeleton"), I(5, 2, 3), I(1, 2, 0)),
+                new Theme("정신과 격리실", P("HospitalBed", "FoldingScreen", "CrackedMirror", "RockingChair"), I(7, 1, 3), I(0, 4, 2), false),
+                new Theme("VIP 병실", P("HospitalBed", "WaitingBench", "Wheelchair", "Bookshelf", "Armchair", "Sofa", "CrackedMirror"), I(4, 6, 5), I(5, 3, 2)),
+                new Theme("분만실", P("HospitalBed", "Crib", "IVStand", "Sink", "Incubator", "CrashCart"), I(5, 7, 2), I(2, 1, 0)),
+                new Theme("재활실", P("ExamTable", "Wheelchair", "FoldingScreen", "WaitingBench", "Crutches", "Skeleton"), I(4, 6, 5), I(5, 0, 2)),
             },
         };
+
+
+        // 테마별로 어울리는 새 바닥/벽 질감 (위 번호 참고)
+        static int[] ExtraFloors(string name)
+        {
+            switch (name)
+            {
+                case "보일러실": case "기계실": case "배전실": case "정비실": case "환기실": return I(11, 12);
+                case "수조실": case "폐기물실": case "창고": case "냉동 창고": return I(12, 14);
+                case "샤워실": case "소독실": case "수술실": case "수술 준비실": case "영안실": case "부검실": case "병리실": case "탈의실": return I(10, 12);
+                case "병실": case "소아 병실": case "격리 병실": case "격리실": case "중환자실": case "회복실": case "처치실": case "주사실": case "응급 처치실": return I(9, 10);
+                case "정신과 격리실": return I(13, 9);
+                case "원장실": case "회의실": case "VIP 병실": case "도서실": case "예배실": case "면회실": case "상담실": case "진료실": case "의국": return I(8, 13);
+                case "취사장": case "급식실": case "구내식당": case "세탁실": case "린넨실": return I(10, 9);
+                default: return I(8, 14);
+            }
+        }
+
+        static int[] ExtraWalls(string name)
+        {
+            switch (name)
+            {
+                case "보일러실": case "기계실": case "배전실": case "정비실": case "환기실": case "창고": case "냉동 창고": case "폐기물실": return I(6, 8);
+                case "수조실": case "샤워실": case "세탁실": case "린넨실": return I(8, 9);
+                case "취사장": case "급식실": case "구내식당": return I(9, 7);
+                case "영안실": case "안치실": case "부검실": case "정신과 격리실": case "격리실": case "격리 병실": return I(11, 6);
+                case "원장실": case "회의실": case "도서실": case "예배실": case "VIP 병실": case "면회실": return I(10, 9);
+                default: return I(7, 10);
+            }
+        }
 
         // 특별한 방 이름 (층, 방): 정문 로비, 시작 방, 간호사실, 승강기 앞
         static string SpecialName(int floor, int room, out string[] props)
@@ -253,11 +285,15 @@ namespace Escape.Core
                         int h = Hash(f * 1000 + r, attempt, 97);
                         env.floorTex = t.floors[h % t.floors.Length];
                         env.wallTex = t.walls[(h >> 3) % t.walls.Length];
+                        // 테마에 어울리는 새 질감을 일부 방에 섞는다 (같은 테마라도 방마다 달라 보이게)
+                        var xf = ExtraFloors(t.name); var xw = ExtraWalls(t.name);
+                        if (xf.Length > 0 && (h >> 16) % 100 < 45) env.floorTex = xf[(h >> 20) % xf.Length];
+                        if (xw.Length > 0 && (h >> 17) % 100 < 45) env.wallTex = xw[(h >> 22) % xw.Length];
                         env.tint = (h >> 6) % Tints;
                         env.light = (h >> 9) % LightColors;
                         env.flicker = (h >> 12) % 6 == 0 ? 1 : 0;
                         env.debris = (h >> 14) % 4;
-                        long key = ((((long)env.floorTex * 8 + env.wallTex) * 8 + env.tint) * 8 + env.light) * 8 + env.debris;
+                        long key = ((((long)env.floorTex * 16 + env.wallTex) * 8 + env.tint) * 8 + env.light) * 8 + env.debris;
                         key = key * 100 + Mathf.Abs(env.theme.GetHashCode() % 97);
                         if (used.Add(key)) break;
                     }
