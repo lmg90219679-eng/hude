@@ -75,6 +75,7 @@ namespace Escape.Interaction
                 if (itemVisual != null) itemVisual.SetActive(true);
 
                 NoiseSystem.Emit(transform.position, openNoiseRadius);
+                if (!metalDrawer && Escape.Audio.GameAudio.Instance != null) Escape.Audio.GameAudio.Instance.PlayAt("Drawer", transform.position, 0.9f, 20f);
                 if (metalDrawer) RaiseMetalAlarm();
 
                 if (Content == null) who.Inventory.Say("아무것도 없다");

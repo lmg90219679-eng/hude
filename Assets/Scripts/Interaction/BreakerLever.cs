@@ -50,7 +50,7 @@ namespace Escape.Interaction
             {
                 raised = true;
                 NoiseSystem.Emit(transform.position, 28f);
-                if (GameAudio.Instance != null) GameAudio.Instance.PlayMetal();
+                if (GameAudio.Instance != null) GameAudio.Instance.PlayAt("Lever", transform.position, 1f, 40f);
 
                 if (grid.Complete) who.Inventory.Say("전원이 모두 복구됐다... 건물 어딘가에서 무언가 깨어났다");
                 else if (index == 0) who.Inventory.Say("차단기를 올렸다. 아래층 어딘가에 희미한 불이 들어온다");
@@ -59,7 +59,7 @@ namespace Escape.Interaction
             else
             {
                 NoiseSystem.Emit(transform.position, 45f);
-                if (GameAudio.Instance != null) GameAudio.Instance.PlayMetal();
+                if (GameAudio.Instance != null) GameAudio.Instance.PlayAt("Lever", transform.position, 1f, 40f);
                 who.Inventory.Say("순서가 틀렸다! 차단기가 전부 내려갔다");
             }
         }

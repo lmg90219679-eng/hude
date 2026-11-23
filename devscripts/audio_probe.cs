@@ -1,0 +1,12 @@
+using UnityEngine; using System.Linq; using Escape.Interaction; using Escape.Audio;
+var ga = GameAudio.Instance;
+var d = Door.All.First(x => x.name.StartsWith("NormalDoor_1F") && !x.IsLocked);
+var inter = Object.FindAnyObjectByType<Interactor>();
+int before = Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Count(s => s.name.StartsWith("Sfx_"));
+d.Interact(inter);
+int after = Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Count(s => s.name.StartsWith("Sfx_"));
+var c = Object.FindObjectsByType<Container>().First(x => !x.metalDrawer && !x.IsOpen);
+c.Interact(inter);
+int after2 = Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Count(s => s.name.StartsWith("Sfx_"));
+var src = Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Where(s => s.name.StartsWith("Sfx_")).Select(s => s.name + " playing=" + s.isPlaying + " 3D=" + s.spatialBlend).ToList();
+return $"문 소리 {before}->{after}, 서랍 소리 ->{after2} | " + string.Join("; ", src);

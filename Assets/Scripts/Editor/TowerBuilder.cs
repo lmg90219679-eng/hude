@@ -97,6 +97,7 @@ namespace Escape.EditorTools
             SetupChaserImport();
             EnsureNewPropsReady();
             BuildItemPrefabs();
+            BuildItemIcons();
             BuildMenuScene();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);

@@ -29,6 +29,12 @@ namespace Escape.Items
         public string LastMessage { get; private set; } = "";
         public float LastMessageTime { get; private set; } = -100f;
 
+        // 마지막으로 얻은 것 (HUD가 아이콘 알림 카드를 띄운다)
+        public ItemType LastAdded { get; private set; }
+        public bool LastAddedRoomKey { get; private set; }
+        public string LastAddedText { get; private set; } = "";
+        public float LastAddedTime { get; private set; } = -100f;
+
         public bool HasMasterKey => Has(ItemType.MasterKey);
         public int RoomKeyCount => roomKeys.Count;
         public IEnumerable<string> RoomKeyIds => roomKeys;
@@ -54,7 +60,9 @@ namespace Escape.Items
         public void Add(ItemType t, int n = 1)
         {
             items[t] = Count(t) + n;
+            LastAdded = t; LastAddedRoomKey = false; LastAddedText = ""; LastAddedTime = Time.time;
             Say($"{ItemInfo.Label(t)} 획득");
+            Escape.Audio.GameAudio.Instance?.PlayUi(t == ItemType.SecurityCard || ItemInfo.IsPiece(t) || t == ItemType.MasterKey ? "Key" : "Pickup", 0.8f);
             Changed?.Invoke();
         }
 
@@ -69,7 +77,9 @@ namespace Escape.Items
         public void AddRoomKey(string id)
         {
             roomKeys.Add(id);
+            LastAddedRoomKey = true; LastAddedText = id; LastAddedTime = Time.time;
             Say($"방 열쇠 획득 ({id})");
+            Escape.Audio.GameAudio.Instance?.PlayUi("Key", 0.9f);
             Changed?.Invoke();
         }
 

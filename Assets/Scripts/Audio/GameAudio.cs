@@ -1,6 +1,7 @@
 using Escape.Core;
 using Escape.Enemy;
 using Escape.Player;
+using System.Linq;
 using UnityEngine;
 
 namespace Escape.Audio
@@ -18,22 +19,29 @@ namespace Escape.Audio
 
         AudioSource ambient, heart, steps, sfx, sfxLow, sfxHigh;
         AudioClip footstep, scream, sting, click, metal;
+        AudioClip[] footsteps;
+
+        /// <summary>Resources/Audio에 있는 소리 파일을 불러온다. 없으면 null (그때는 코드로 만든 소리로 대신한다).</summary>
+        public static AudioClip Load(string name) => Resources.Load<AudioClip>("Audio/" + name);
 
         void Awake()
         {
             Instance = this;
             if (player == null) player = FindFirstObjectByType<PlayerController>();
-            click = ProceduralSounds.Click();
+            click = Load("Click") ?? ProceduralSounds.Click();
 
-            ambient = NewSource("Ambient", ProceduralSounds.AmbientDrone(), loop: true, volume: 0.5f);
-            heart = NewSource("Heartbeat", ProceduralSounds.Heartbeat(), loop: true, volume: 0f);
+            ambient = NewSource("Ambient", Load("Amb_Drone") ?? ProceduralSounds.AmbientDrone(), loop: true, volume: 0.5f);
+            heart = NewSource("Heartbeat", Load("Heartbeat") ?? ProceduralSounds.Heartbeat(), loop: true, volume: 0f);
             steps = NewSource("Steps", null, loop: false, volume: 0.6f);
             sfx = NewSource("Sfx", null, loop: false, volume: 1f);
             sfxLow = NewSource("SfxLow", null, loop: false, volume: 1f);
             sfxHigh = NewSource("SfxHigh", null, loop: false, volume: 1f);
-            footstep = ProceduralSounds.Footstep();
-            scream = ProceduralSounds.Scream();
-            sting = ProceduralSounds.Sting();
+            footsteps = new[] { Load("Footstep1"), Load("Footstep2"), Load("Footstep3"), Load("Footstep4") };
+            if (footsteps.Any(c => c == null)) footsteps = new[] { ProceduralSounds.Footstep() };
+            footstep = footsteps[0];
+            scream = Load("Scream") ?? ProceduralSounds.Scream();
+            sting = Load("Sting") ?? ProceduralSounds.Sting();
+            growl = Load("Growl");
 
             ambient.Play();
             heart.Play();
@@ -60,6 +68,36 @@ namespace Escape.Audio
             return s;
         }
 
+        /// <summary>소리 파일을 한 지점에서 입체음으로 한 번 재생한다 (문, 서랍, 레버 등). 파일이 없으면 아무것도 안 한다.</summary>
+        public void PlayAt(string clipName, Vector3 position, float volume = 1f, float maxDistance = 28f)
+        {
+            var clip = Load(clipName);
+            if (clip == null) return;
+            var go = new GameObject("Sfx_" + clipName);
+            go.transform.position = position;
+            var s = go.AddComponent<AudioSource>();
+            s.clip = clip;
+            s.volume = volume;
+            s.spatialBlend = 1f;
+            s.rolloffMode = AudioRolloffMode.Linear;
+            s.minDistance = 1.5f;
+            s.maxDistance = maxDistance;
+            s.pitch = Random.Range(0.94f, 1.06f);
+            s.Play();
+            Destroy(go, clip.length / Mathf.Max(0.5f, s.pitch) + 0.2f);
+        }
+
+        /// <summary>플레이어 자신이 내는 소리(줍기, 인벤토리)를 한 번 재생한다.</summary>
+        public void PlayUi(string clipName, float volume = 1f)
+        {
+            var clip = Load(clipName);
+            if (clip != null) sfx.PlayOneShot(clip, volume);
+        }
+
+        AudioClip growl;
+        float nextGrowl;
+        readonly System.Collections.Generic.Dictionary<ChaserAI, ChaserAI.State> lastStates = new System.Collections.Generic.Dictionary<ChaserAI, ChaserAI.State>();
+
         ChaserAI[] chasers = new ChaserAI[0];
         float nextScan;
 
@@ -83,6 +121,14 @@ namespace Escape.Audio
                 // 다른 층이면 거리를 크게 보정 (벽과 바닥이 가로막는다)
                 if (c.Floor != Escape.Core.TowerLayout.FloorOf(player.transform.position.y)) dist += 14f;
                 float k = 1f - Mathf.Clamp01(dist / heartbeatMaxDistance);
+                // 추적자가 추격을 시작하면 으르렁거린다 (가까울 때만, 너무 자주는 아니게)
+                if (lastStates.TryGetValue(c, out var prev) && prev != ChaserAI.State.Chase && c.Current == ChaserAI.State.Chase
+                    && growl != null && dist < 32f && Time.time >= nextGrowl)
+                {
+                    PlayAt("Growl", c.transform.position, 1f, 36f);
+                    nextGrowl = Time.time + 6f;
+                }
+                lastStates[c] = c.Current;
                 if (c.Current == ChaserAI.State.Chase) k = Mathf.Max(k, 0.7f);
                 else if (c.Current == ChaserAI.State.Search) k = Mathf.Max(k, 0.25f);
                 closeness = Mathf.Max(closeness, k);
@@ -100,7 +146,7 @@ namespace Escape.Audio
 
         public void PlayDing()
         {
-            if (ding == null) ding = ProceduralSounds.Ding();
+            if (ding == null) ding = Load("Ding") ?? ProceduralSounds.Ding();
             sfx.PlayOneShot(ding, 0.9f);
         }
 
@@ -109,7 +155,7 @@ namespace Escape.Audio
         {
             if (humSource == null)
             {
-                hum = ProceduralSounds.ElevatorHum();
+                hum = Load("ElevatorHum") ?? ProceduralSounds.ElevatorHum();
                 humSource = NewSource("ElevatorHum", hum, loop: true, volume: 0f);
             }
             if (on && !humSource.isPlaying) humSource.Play();
@@ -138,7 +184,7 @@ namespace Escape.Audio
         {
             if (whisperSource == null)
             {
-                whisper = ProceduralSounds.Whisper();
+                whisper = Load("Whisper") ?? ProceduralSounds.Whisper();
                 whisperSource = NewSource("Whisper", whisper, loop: true, volume: 0f);
             }
             whisperSource.Play();
@@ -153,7 +199,7 @@ namespace Escape.Audio
                 if (t >= nextStep)
                 {
                     steps.pitch = Random.Range(0.75f, 0.95f);
-                    steps.PlayOneShot(footstep, Mathf.Lerp(0.1f, 1f, k));
+                    steps.PlayOneShot(footsteps[Random.Range(0, footsteps.Length)], Mathf.Lerp(0.1f, 1f, k));
                     nextStep = t + Mathf.Lerp(0.9f, 0.4f, k);   // 다가올수록 빨라진다
                 }
                 t += Time.deltaTime;
@@ -170,21 +216,21 @@ namespace Escape.Audio
 
         public void PlayAlarm()
         {
-            if (alarm == null) alarm = ProceduralSounds.Alarm();
+            if (alarm == null) alarm = Load("Alarm") ?? ProceduralSounds.Alarm();
             sfx.PlayOneShot(alarm, 0.9f);
         }
 
         public void PlayMetal()
         {
-            if (metal == null) metal = ProceduralSounds.Metal();
+            if (metal == null) metal = Load("MetalClang") ?? ProceduralSounds.Metal();
             sfx.PlayOneShot(metal, 1f);
         }
 
         void OnStep(bool crouching, bool sprinting)
         {
             float vol = crouching ? 0.15f : sprinting ? 0.9f : 0.5f;
-            steps.pitch = Random.Range(0.9f, 1.1f);
-            steps.PlayOneShot(footstep, vol);
+            steps.pitch = Random.Range(0.92f, 1.08f);
+            steps.PlayOneShot(footsteps[Random.Range(0, footsteps.Length)], vol);
         }
 
         System.Collections.IEnumerator DelayedSting(float delay)

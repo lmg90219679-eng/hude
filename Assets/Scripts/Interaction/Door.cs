@@ -80,9 +80,15 @@ namespace Escape.Interaction
         public bool TryOpenByChaser()
         {
             if (IsLocked || secret || PowerBlocked) return false;
-            if (!open) { open = true; openedByChaser = true; }
+            if (!open) { open = true; openedByChaser = true; PlayDoorSound(0.6f); }
             closeAt = Time.time + AutoCloseSeconds;
             return true;
+        }
+
+        void PlayDoorSound(float volume = 1f)
+        {
+            if (Escape.Audio.GameAudio.Instance != null)
+                Escape.Audio.GameAudio.Instance.PlayAt(hinge != null ? "DoorCreak" : "DoorSlide", transform.position, volume);
         }
 
         bool PowerBlocked => requiresPower && (PowerGrid.Instance == null || !PowerGrid.Instance.Complete);
@@ -128,6 +134,7 @@ namespace Escape.Interaction
 
             NoiseSystem.Emit(transform.position, noiseRadius);
             open = !open;
+            PlayDoorSound();
             openedByChaser = false;   // 플레이어가 직접 여닫은 문은 자동으로 닫지 않는다
         }
 
