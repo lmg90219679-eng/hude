@@ -125,6 +125,7 @@ namespace Escape.EditorTools
             BuildHospitalRooms(map.transform);
             BuildDecayProps(map.transform);
             BuildClutter(map.transform);
+            ResolveLayout(map.transform);
             BuildNavMeshForTower(map);
 
             // 플레이어: 1층 북쪽 가운데 방(상담실)에서 시작. 계단은 복도 양 끝 방화문 너머에 있어서 직접 찾아야 한다
@@ -267,6 +268,7 @@ namespace Escape.EditorTools
                 lintel.transform.position = vertical ? new Vector3(line, y + 2.8f, g.c) : new Vector3(g.c, y + 2.8f, line);
                 lintel.transform.localScale = vertical ? new Vector3(WallThick, 0.4f, g.w) : new Vector3(g.w, 0.4f, WallThick);
                 lintel.GetComponent<Renderer>().sharedMaterial = WallMaterialFor(g.w);
+                AddWallSkins(y, vertical, line, gapStart, gapEnd, 2.6f, 3.0f);   // 문 위 벽도 방의 벽 질감으로 덮는다
             }
             if (to > cursor + 0.01f) WallPiece(root, y, vertical, line, cursor, to);
         }
@@ -513,6 +515,11 @@ namespace Escape.EditorTools
                         matPlus = DoorMaterialForSide(req.floor, req.center + faceN * 0.7f) ?? mat;
                         matMinus = DoorMaterialForSide(req.floor, req.center - faceN * 0.7f) ?? mat;
                     }
+                    if (req.kind == DoorKind.Secret)   // 숨겨진 문은 양쪽 모두 그 방의 벽처럼 보여야 한다
+                    {
+                        matPlus = WallMatForSide(req.floor, req.center + faceN * 0.7f) ?? mat;
+                        matMinus = WallMatForSide(req.floor, req.center - faceN * 0.7f) ?? mat;
+                    }
                     leaf.GetComponent<Renderer>().sharedMaterials = new[] { matPlus, matMinus };
                     so.FindProperty("leaf").objectReferenceValue = leaf.transform;
                     so.FindProperty("slideDir").vector3Value = req.along * dir;
@@ -531,6 +538,13 @@ namespace Escape.EditorTools
                 door.requiresPower = req.requiresPower;
                 EditorUtility.SetDirty(door);
             }
+        }
+
+        static Material WallMatForSide(int floor, Vector3 pos)
+        {
+            int room = TowerLayout.RoomAt(pos);
+            if (room < 0 || TowerLayout.IsVoidRoom(room)) return null;
+            return EnvWallMat(RoomThemes.Get(floor, room));
         }
 
         static readonly Dictionary<string, Material> doorSideMats = new Dictionary<string, Material>();

@@ -138,5 +138,78 @@ namespace Escape.EditorTools
             }
             Debug.Log($"[ItemBuilder] 방 잡동사니 {placed}개 배치");
         }
+        // ---------- 배치 검증과 재배치 ----------
+
+        class LayoutEntry { public Transform t; public Bounds b; public int priority; public int floor; }
+
+        /// <summary>
+        /// 소품·서랍장·옷장이 서로 겹치거나, 문 앞과 숨는 곳 출구를 막으면 우선순위가 낮은 쪽을 치운다.
+        /// 우선순위: 서랍장·옷장·침대(숨는 곳) 3 &gt; 일반 소품 2 &gt; 잡동사니 1. NavMesh를 굽기 전에 부른다.
+        /// </summary>
+        static void ResolveLayout(Transform parent)
+        {
+            Physics.SyncTransforms();
+            var entries = new List<LayoutEntry>();
+            void Collect(Transform t, int priority)
+            {
+                var col = t.GetComponent<BoxCollider>() ?? t.GetComponentInChildren<BoxCollider>();
+                if (col == null) return;
+                entries.Add(new LayoutEntry { t = t, b = col.bounds, priority = priority, floor = TowerLayout.FloorOf(col.bounds.center.y) });
+            }
+            var hp = GameObject.Find("Tower/HospitalProps");
+            if (hp != null) foreach (Transform t in hp.transform) Collect(t, t.GetComponent<Escape.Interaction.HidingSpot>() != null ? 3 : 2);
+            var cl = GameObject.Find("Tower/RoomClutter");
+            if (cl != null) foreach (Transform t in cl.transform) Collect(t, 1);
+            foreach (var c in Object.FindObjectsByType<Escape.Interaction.Container>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Collect(c.transform, 3);
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(x => x.name == "Locker")) Collect(t, 3);
+
+            int doorRemoved = 0, exitRemoved = 0, overlapRemoved = 0;
+            var gone = new HashSet<LayoutEntry>();
+            void Kill(LayoutEntry e) { if (gone.Add(e)) Object.DestroyImmediate(e.t.gameObject); }
+
+            // 1) 문 앞: 문 중심에서 양쪽으로 0.25~1.55m, 문 폭 90%
+            foreach (var req in doorRequests)
+            {
+                bool alongX = Mathf.Abs(req.along.x) > 0.5f;
+                float w = req.width > 0f ? req.width : DoorWidth;
+                Vector3 n = alongX ? Vector3.forward : Vector3.right;
+                foreach (float side in new[] { 1f, -1f })
+                {
+                    var zone = new Bounds(req.center + n * side * 0.9f + Vector3.up * 1f, alongX ? new Vector3(w * 0.9f, 2f, 1.3f) : new Vector3(1.3f, 2f, w * 0.9f));
+                    foreach (var e in entries) if (!gone.Contains(e) && e.floor == req.floor && zone.Intersects(e.b)) { Kill(e); doorRemoved++; }
+                }
+            }
+
+            // 2) 숨는 곳 출구 앞
+            foreach (var hs in Object.FindObjectsByType<Escape.Interaction.HidingSpot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (hs == null) continue;   // 앞에서 치운 소품의 숨는 곳
+                var ex = hs.transform.Find("ExitPoint"); if (ex == null) continue;
+                var zone = new Bounds(ex.position + Vector3.up * 1f, new Vector3(0.9f, 2f, 0.9f));
+                foreach (var e in entries)
+                {
+                    if (gone.Contains(e) || e.t == null || e.t == hs.transform || e.t.IsChildOf(hs.transform)) continue;
+                    if (zone.Intersects(e.b)) { Kill(e); exitRemoved++; }
+                }
+            }
+
+            // 3) 서로 겹침: 우선순위가 낮은 쪽을 치운다 (같으면 나중 것)
+            var alive = entries.Where(e => !gone.Contains(e)).ToList();
+            for (int i = 0; i < alive.Count; i++)
+            {
+                if (gone.Contains(alive[i])) continue;
+                for (int j = i + 1; j < alive.Count; j++)
+                {
+                    if (gone.Contains(alive[j]) || alive[i].floor != alive[j].floor) continue;
+                    var a = alive[i].b; var b = alive[j].b;
+                    a.Expand(-0.1f); b.Expand(-0.1f);
+                    if (!a.Intersects(b)) continue;
+                    var loser = alive[i].priority < alive[j].priority ? alive[i] : alive[j];
+                    Kill(loser); overlapRemoved++;
+                    if (loser == alive[i]) break;
+                }
+            }
+            Debug.Log($"[ItemBuilder] 배치 정리: 문 앞 {doorRemoved}개, 숨는 곳 출구 {exitRemoved}개, 겹침 {overlapRemoved}개를 치움 (남은 소품 {entries.Count - gone.Count}개)");
+        }
     }
 }

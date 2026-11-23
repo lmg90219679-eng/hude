@@ -9,6 +9,7 @@ namespace Escape.Core
         public string name;       // 층 안에서 겹치지 않는 이름 (예: "병실 214")
         public string theme;      // 테마 이름 (예: "병실")
         public string[] props;    // 이 테마가 즐겨 놓는 소품 모델
+        public int ceilTex;       // 0..CeilingStyles-1 (0 기본 무너진 천장, 1 타일, 2 콘크리트, 3 나무, 4 회반죽, 5 금속·배관)
         public int floorTex;      // 0..FloorStyles-1
         public int wallTex;       // 0..WallStyles-1
         public int tint;          // 0..Tints-1 (바닥·벽·천장에 곱하는 색조)
@@ -21,7 +22,7 @@ namespace Escape.Core
 
     public static class RoomThemes
     {
-        public const int FloorStyles = 15, WallStyles = 12, Tints = 6, LightColors = 5;
+        public const int FloorStyles = 15, WallStyles = 12, Tints = 6, LightColors = 5, CeilingStyles = 6;
 
         public static readonly Color[] TintColors =
         {
@@ -179,6 +180,22 @@ namespace Escape.Core
             }
         }
 
+
+        // 테마별로 어울리는 천장 질감 (0 기본 무너진 천장, 1 타일, 2 콘크리트, 3 나무, 4 회반죽, 5 금속·배관)
+        static int CeilingFor(string name, int floor, int h)
+        {
+            int[] pool;
+            switch (name)
+            {
+                case "보일러실": case "기계실": case "배전실": case "정비실": case "환기실": case "세탁실": case "린넨실": case "폐기물실": pool = I(5, 2, 5, 0); break;
+                case "수조실": case "창고": case "냉동 창고": case "장비 창고": case "약품 창고": case "중앙 공급실": pool = I(2, 0, 5, 2); break;
+                case "원장실": case "회의실": case "도서실": case "예배실": case "VIP 병실": case "면회실": case "직원 휴게실": pool = I(3, 4, 3, 0); break;
+                case "진료실": case "상담실": case "의국": case "접수실": case "원무과": case "수납 창구": case "의무 기록실": case "기록 보관실": case "경비실": pool = I(1, 4, 4, 0); break;
+                default: pool = floor <= 1 ? I(1, 2, 0, 4) : I(1, 4, 1, 0); break;
+            }
+            return pool[h % pool.Length];
+        }
+
         // 특별한 방 이름 (층, 방): 정문 로비, 시작 방, 간호사실, 승강기 앞
         static string SpecialName(int floor, int room, out string[] props)
         {
@@ -252,6 +269,7 @@ namespace Escape.Core
                         env.light = (h >> 12) % LightColors;
                         env.flicker = (h >> 16) % 5 == 0 ? 1 : 0;
                         env.debris = 2;
+                        env.ceilTex = f <= 1 ? new[] { 2, 5, 0, 1 }[(h >> 20) % 4] : new[] { 1, 0, 4, 1 }[(h >> 20) % 4];
                         env.windowed = false;
                         envs[f, r] = env;
                         continue;
@@ -297,6 +315,7 @@ namespace Escape.Core
                         key = key * 100 + Mathf.Abs(env.theme.GetHashCode() % 97);
                         if (used.Add(key)) break;
                     }
+                    env.ceilTex = CeilingFor(t.name, f, Hash(f * 1000 + r, 41, 7));
                     env.signature = Hash(env.floorTex, env.wallTex * 8 + env.tint, env.light * 8 + env.debris);
                     envs[f, r] = env;
                 }

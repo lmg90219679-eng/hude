@@ -159,11 +159,25 @@ namespace Escape.EditorTools
             for (int i = 0; i < count && i < names.Count; i++)
             {
                 string pick = env.props[rng.Next(env.props.Length)];
-                if (env.theme == "예배실" && i < 3) pick = i == 0 ? "Altar" : i == 1 ? "Statue" : "Confessional";   // 예배실에는 제단, 성상, 고해소가 반드시 놓인다
+                if (ForcedProps.TryGetValue(env.theme, out var forced) && i < forced.Length) pick = forced[i];   // 이 방의 상징적인 소품은 반드시 놓는다
                 list.Add(pick + ":" + names[i]);
             }
             return list;
         }
+
+        // 테마마다 먼저 반드시 놓이는 소품 (무작위로는 한 번도 안 뽑히는 방이 없도록)
+        static readonly Dictionary<string, string[]> ForcedProps = new Dictionary<string, string[]>
+        {
+            { "예배실", new[] { "Altar", "Statue", "Confessional" } },
+            { "샤워실", new[] { "Bathtub", "Toilet", "Sink" } },
+            { "소아 병실", new[] { "ToyChest", "Crib", "Incubator" } },
+            { "영안실", new[] { "AutopsyTable", "Coffin", "MorgueUnit" } },
+            { "수술실", new[] { "OperatingTable", "SurgicalLamp", "CrashCart" } },
+            { "분만실", new[] { "Incubator", "Crib" } },
+            { "탈의실", new[] { "SteelLocker", "Toilet" } },
+            { "방사선실", new[] { "XRayMachine" } },
+            { "MRI실", new[] { "XRayMachine" } },
+        };
 
         static bool HallHasStairsInRoom(int floor, int room) =>
             (room == TowerLayout.WestStairRoom || room == TowerLayout.EastStairRoom) && HallHasStairs(floor, room);
@@ -206,9 +220,12 @@ namespace Escape.EditorTools
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(HospitalTexDir + "/FloorTile.png") == null) return;
 
             floorMat = TextureMaterial("HospitalFloor", HospitalTexDir + "/FloorTile.png", new Vector2(12f, 12f), Vector2.zero, 0.25f);
-            wallShortMat = TextureMaterial("HospitalWallShort", HospitalTexDir + "/WallPaint.png", new Vector2(1f, 1f), Vector2.zero, 0.1f);
-            wallMat = TextureMaterial("HospitalWallMid", HospitalTexDir + "/WallPaint.png", new Vector2(2f, 1f), Vector2.zero, 0.1f);
-            wallLongMat = TextureMaterial("HospitalWallLong", HospitalTexDir + "/WallPaint.png", new Vector2(3f, 1f), Vector2.zero, 0.1f);
+            // 벽 코어(문틀 옆 단면, 모서리 끝)는 방마다 입히는 벽 질감 밑으로 보이는 부분이라, 어느 벽과도 어울리는 어두운 콘크리트로 한다
+            string corePath = AssetDatabase.LoadAssetAtPath<Texture2D>(HospitalTexDir + "/WallBunker.png") != null ? HospitalTexDir + "/WallBunker.png" : HospitalTexDir + "/WallPaint.png";
+            wallShortMat = TextureMaterial("HospitalWallShort", corePath, new Vector2(1f, 1f), Vector2.zero, 0.1f);
+            wallMat = TextureMaterial("HospitalWallMid", corePath, new Vector2(2f, 1f), Vector2.zero, 0.1f);
+            wallLongMat = TextureMaterial("HospitalWallLong", corePath, new Vector2(3f, 1f), Vector2.zero, 0.1f);
+            foreach (var m in new[] { wallShortMat, wallMat, wallLongMat }) { m.SetColor("_BaseColor", new Color(0.5f, 0.5f, 0.5f)); EditorUtility.SetDirty(m); }
 
             // 방문: 두 짝이 좌우로 갈라지는 미닫이 양문이라 짝마다 이미지 한 장
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(HospitalTexDir + "/DoorRoom.png") != null)

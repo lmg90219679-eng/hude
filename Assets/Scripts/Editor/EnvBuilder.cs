@@ -21,6 +21,8 @@ namespace Escape.EditorTools
             "FloorWood.png", "FloorLino.png", "FloorCarpet.png", "FloorBlood.png",
             "FloorParquet.png", "FloorRubber.png", "FloorMosaic.png", "FloorGrate.png", "FloorFlooded.png", "FloorBurned.png", "FloorGravel.png",
         };
+        static readonly string[] CeilingFiles = { "CeilingDecay.png", "CeilingTiles.png", "CeilingConcrete.png", "CeilingWood.png", "CeilingPlaster.png", "CeilingMetal.png" };
+
         static readonly string[] WallFiles =
         {
             "WallDecay.png", "WallTile.png", "WallBlue.png", "WallWood.png", "WallGraffiti.png", "WallPaper.png",
@@ -74,10 +76,10 @@ namespace Escape.EditorTools
         }
 
         /// <summary>벽 한 조각(코어 위)의 양쪽 면에, 그 면을 보는 방의 벽 질감을 입힌다.</summary>
-        static void AddWallSkins(float y, bool vertical, float line, float a, float b)
+        static void AddWallSkins(float y, bool vertical, float line, float a, float b, float h0 = 0f, float h1 = -1f)
         {
             float len = b - a, mid = (a + b) * 0.5f;
-            float y0 = y, y1 = y + WallHeight;
+            float y0 = y + h0, y1 = y + (h1 < 0f ? WallHeight : h1);   // 문 위 상인방은 높이 범위를 따로 준다
             const float off = WallThick * 0.5f + 0.004f;
             if (vertical)
             {
@@ -147,7 +149,7 @@ namespace Escape.EditorTools
                 }
 
                 // 천장: 위층 바닥판의 계단 구멍은 비워 둔다
-                var cm = EnvMat(new[] { "CeilingDecay.png" }, 0, env.tint, 0.1f, "CeilingDecay.png") ?? ceilBase;
+                var cm = EnvMat(CeilingFiles, env.ceilTex, env.tint, 0.1f, "CeilingDecay.png") ?? ceilBase;
                 if (cm == null) continue;
                 var holes = floor < TowerLayout.Floors - 1 ? SlabHoles(floor + 1).Where(h => h.Overlaps(r)).ToList() : new List<Rect>();
                 if (holes.Count == 0)
