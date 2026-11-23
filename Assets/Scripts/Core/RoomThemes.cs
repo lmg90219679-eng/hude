@@ -64,8 +64,8 @@ namespace Escape.Core
                 new Theme("수조실", P("Sink", "OxygenTank", "MetalShelf"), I(2, 0), I(1, 0), false),
                 new Theme("직원 휴게실", P("WaitingBench", "OfficeDesk", "Bookshelf"), I(4, 6), I(3, 5), false),
                 new Theme("정비실", P("MetalShelf", "OfficeDesk", "MedicineCart"), I(3, 1), I(2, 4), false),
-                new Theme("탈의실", P("SteelLocker", "WaitingBench", "Sink"), I(2, 3), I(1, 2), false),
-                new Theme("취사장", P("KitchenCounter", "DiningTable", "MetalShelf"), I(2, 5), I(1, 0), false),
+                new Theme("탈의실", P("SteelLocker", "WaitingBench", "Toilet", "Sink"), I(2, 3), I(1, 2), false),
+                new Theme("취사장", P("KitchenCounter", "Refrigerator", "DiningTable", "MetalShelf"), I(2, 5), I(1, 0), false),
             },
             // ---------- 지하1 ----------
             new[]
@@ -98,12 +98,12 @@ namespace Escape.Core
                 new Theme("수납 창구", P("NurseCounter", "FilingCabinet", "WaitingBench"), I(2, 5), I(2, 5)),
                 new Theme("의무 기록실", P("FilingCabinet", "FilingCabinet", "Bookshelf"), I(4, 6), I(3, 5)),
                 new Theme("물리치료실", P("ExamTable", "Wheelchair", "FoldingScreen"), I(5, 4), I(2, 0)),
-                new Theme("대기실", P("WaitingBench", "WaitingBench", "Wheelchair"), I(1, 0), I(0, 5)),
-                new Theme("매점", P("KitchenCounter", "MetalShelf", "WaitingBench"), I(2, 5), I(5, 2)),
+                new Theme("대기실", P("WaitingBench", "VendingMachine", "WaitingBench", "Wheelchair"), I(1, 0), I(0, 5)),
+                new Theme("매점", P("VendingMachine", "Refrigerator", "MetalShelf", "WaitingBench"), I(2, 5), I(5, 2)),
                 new Theme("구내식당", P("DiningTable", "KitchenCounter", "DiningTable"), I(2, 4), I(1, 0)),
                 new Theme("경비실", P("OfficeDesk", "Bookshelf", "FilingCabinet"), I(3, 6), I(4, 3)),
                 new Theme("도서실", P("Bookshelf", "Bookshelf", "DiningTable"), I(4, 6), I(3, 5)),
-                new Theme("예배실", P("WaitingBench", "WaitingBench", "WaitingBench"), I(4, 0), I(5, 0)),
+                new Theme("예배실", P("Altar", "WaitingBench", "WaitingBench", "WaitingBench"), I(4, 0), I(5, 0)),
             },
             // ---------- 2층 ----------
             new[]
@@ -119,8 +119,8 @@ namespace Escape.Core
                 new Theme("면회실", P("WaitingBench", "DiningTable", "Bookshelf"), I(4, 6, 1), I(3, 5, 0)),
                 new Theme("회복실", P("HospitalBed", "Gurney", "IVStand"), I(5, 7, 1), I(2, 0, 1)),
                 new Theme("격리 병실", P("HospitalBed", "FoldingScreen", "OxygenTank"), I(7, 1, 3), I(0, 4, 2)),
-                new Theme("샤워실", P("Sink", "Wheelchair", "MetalShelf"), I(2, 7, 1), I(1, 0, 2)),
-                new Theme("급식실", P("KitchenCounter", "DiningTable", "MetalShelf"), I(2, 5, 4), I(1, 0, 5)),
+                new Theme("샤워실", P("Bathtub", "Sink", "Toilet"), I(2, 7, 1), I(1, 0, 2)),
+                new Theme("급식실", P("KitchenCounter", "Refrigerator", "DiningTable", "MetalShelf"), I(2, 5, 4), I(1, 0, 5)),
                 new Theme("의국", P("OfficeDesk", "Bookshelf", "HospitalBed"), I(4, 6, 5), I(3, 5, 2)),
                 new Theme("환자 휴게실", P("WaitingBench", "DiningTable", "Wheelchair"), I(6, 4, 1), I(5, 3, 0)),
                 new Theme("린넨실", P("MetalShelf", "MetalShelf", "WashingMachine"), I(3, 2, 1), I(1, 0, 4)),

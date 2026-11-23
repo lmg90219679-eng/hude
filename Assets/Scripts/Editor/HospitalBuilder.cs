@@ -92,6 +92,11 @@ namespace Escape.EditorTools
             { "OxygenTank",    new PropSpec(1.4f,  0.5f) },
             { "Sink",          new PropSpec(1.0f,  0.8f) },
             { "SteelLocker",   new PropSpec(1.9f,  0.9f) },
+            { "Toilet",        new PropSpec(0.8f,  0.8f) },
+            { "Bathtub",       new PropSpec(0.8f,  1.8f) },
+            { "Refrigerator",  new PropSpec(1.9f,  0.9f) },
+            { "VendingMachine", new PropSpec(1.85f, 1.0f) },
+            { "Altar",         new PropSpec(1.3f,  1.8f) },
         };
 
         static readonly string[] WideAnchors = { "NW", "NE", "SW", "SE", "NM", "SM" };
@@ -216,6 +221,11 @@ namespace Escape.EditorTools
                 case "Crib": chain = new[] { "Crib", "HospitalBed" }; break;
                 case "OxygenTank": chain = new[] { "OxygenTank", "IVStand" }; break;
                 case "Sink": chain = new[] { "Sink", "KitchenCounter", "MedicineCart" }; break;
+                case "Toilet": chain = new[] { "Toilet", "Sink", "KitchenCounter" }; break;
+                case "Bathtub": chain = new[] { "Bathtub", "Gurney" }; break;
+                case "Refrigerator": chain = new[] { "Refrigerator", "SteelLocker" }; break;
+                case "VendingMachine": chain = new[] { "VendingMachine", "SteelLocker" }; break;
+                case "Altar": chain = new[] { "Altar", "DiningTable" }; break;
                 default: chain = new[] { model }; break;
             }
             foreach (var m in chain)
