@@ -476,18 +476,30 @@ namespace Escape.UI
                 GUI.Label(new Rect(bl.x, bl.y - (large ? 26 : 18), wr.width * k, large ? 24 : 16), "탈출구", new GUIStyle(small) { fontSize = large ? 17 : 12, normal = { textColor = new Color(0.5f, 1f, 0.6f) } });
             }
 
-            // 플레이어: 바라보는 방향으로 돌린 화살표
+            // 플레이어: 미니맵은 동그란 점, 큰 지도는 바라보는 방향으로 돌린 화살표
             if (floor == map.CurrentFloor)
             {
                 Vector3 p = map.PlayerPosition;
                 Vector2 c = toScreen(p.x, p.z);
-                float sz = large ? 30f : 22f;
-                var oldM = GUI.matrix;
-                GUIUtility.RotateAroundPivot(map.PlayerYaw, c);
-                var old = GUI.color; GUI.color = new Color(1f, 0.9f, 0.25f);
-                GUI.DrawTexture(new Rect(c.x - sz * 0.5f, c.y - sz * 0.5f, sz, sz), arrowTex);
+                var old = GUI.color;
+                if (!large)
+                {
+                    const float dotSize = 13f;
+                    GUI.color = new Color(0f, 0f, 0f, 0.85f);
+                    GUI.DrawTexture(new Rect(c.x - dotSize * 0.5f - 2f, c.y - dotSize * 0.5f - 2f, dotSize + 4f, dotSize + 4f), circleTex);
+                    GUI.color = new Color(1f, 0.9f, 0.25f);
+                    GUI.DrawTexture(new Rect(c.x - dotSize * 0.5f, c.y - dotSize * 0.5f, dotSize, dotSize), circleTex);
+                }
+                else
+                {
+                    float sz = 30f;
+                    var oldM = GUI.matrix;
+                    GUIUtility.RotateAroundPivot(map.PlayerYaw, c);
+                    GUI.color = new Color(1f, 0.9f, 0.25f);
+                    GUI.DrawTexture(new Rect(c.x - sz * 0.5f, c.y - sz * 0.5f, sz, sz), arrowTex);
+                    GUI.matrix = oldM;
+                }
                 GUI.color = old;
-                GUI.matrix = oldM;
             }
         }
 
