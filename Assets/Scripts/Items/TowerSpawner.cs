@@ -15,6 +15,7 @@ namespace Escape.Items
     public class TowerSpawner : MonoBehaviour
     {
         [SerializeField] int batteriesPerFloor = 2;
+        [SerializeField, Range(0f, 1f)] float chainBias = 0.6f;   // 방 열쇠를 "직전에 열린 구역 안"에 놓을 확률. 높을수록 열쇠를 차례로 따라가야 해서 한 층이 오래 걸린다
         [SerializeField] int[] spareFlashlightFloors = { 0, 2, 4 };
 
         void Start()
@@ -80,10 +81,19 @@ namespace Escape.Items
 
             // 방 열쇠: 열리는 순서대로, 그 시점에 갈 수 있는 방의 컨테이너에만
             var opened = new HashSet<Door>();
+            HashSet<int> prevReach = null;
             foreach (var door in locked)
             {
                 var reach = Reachable(doors, opened);
-                var spot = PickRandom(free, c => reach.Contains(c.room));
+                Container spot = null;
+                if (prevReach != null && Random.value < chainBias)
+                {
+                    var fresh = new HashSet<int>(reach);
+                    fresh.ExceptWith(prevReach);   // 직전 문을 열어서 새로 갈 수 있게 된 방
+                    if (fresh.Count > 0) spot = PickRandom(free, c => fresh.Contains(c.room));
+                }
+                if (spot == null) spot = PickRandom(free, c => reach.Contains(c.room));
+                prevReach = reach;
                 if (spot == null)
                 {
                     Debug.LogWarning($"[TowerSpawner] {TowerLayout.Label(floor)} 열쇠 {door.lockKeyId}를 둘 자리가 없다.");
