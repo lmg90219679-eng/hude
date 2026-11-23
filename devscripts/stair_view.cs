@@ -1,0 +1,18 @@
+using UnityEngine; using System.Linq; using System.Reflection; using Escape.Player; using Escape.Interaction;
+string[] a = System.IO.File.ReadAllText("C:/Projects/Escape/devscripts/prop.txt").Trim().Split(' ');
+string side = a[0]; bool doOpen = a[1] == "open"; int idx = int.Parse(a[2]);
+var doors = Door.All.Where(x => x.name.StartsWith("StairDoor") && x.transform.Find("Hinge") != null).OrderBy(x => x.name).ToList();
+var d = doors[idx];
+var hinge = d.transform.Find("Hinge"); var panel = hinge.Find("Panel");
+bool alongX = panel.localScale.x > panel.localScale.z;
+Vector3 n = alongX ? Vector3.forward : Vector3.right; if (side == "B") n = -n;
+var p = Object.FindAnyObjectByType<PlayerController>();
+Vector3 stand = d.transform.position + n * 2.6f; stand.y = d.transform.position.y + 0.05f;
+p.Teleport(stand, Quaternion.LookRotation(-n).eulerAngles.y);
+typeof(PlayerController).GetField("pitch", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(p, 0f);
+bool isOpen = d.IsOpen;
+typeof(Door).GetField("open", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(d, doOpen);
+typeof(Door).GetField("openedByChaser", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(d, false);
+foreach (var ch in Object.FindObjectsByType<Escape.Enemy.ChaserDoorOpener>(FindObjectsInactive.Include)) ch.enabled = false;
+Vector3 hingeSide = hinge.position - d.transform.position; 
+return $"{d.name} idx={idx}/{doors.Count} alongX={alongX} hingeOffset={hingeSide} viewFrom={n} openAngle={typeof(Door).GetField("openAngle", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(d)}";

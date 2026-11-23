@@ -81,6 +81,7 @@ namespace Escape.EditorTools
             cachedController = null;
             doorRequests.Clear();
             doorLeafMeshes.Clear();
+            stairDoorMeshes.Clear();
             debrisSpots.Clear();
             decayCache.Clear();
             stairStepMat = stairWallMat = stairRailMat = null;
@@ -486,8 +487,8 @@ namespace Escape.EditorTools
                     panel.transform.position = req.center + Vector3.up * 1.3f;
                     panel.transform.localScale = panelSize;
                     panel.GetComponent<Renderer>().sharedMaterial = mat;
-                    // 손잡이는 경첩 반대쪽에 (양쪽 면 모두)
-                    panel.GetComponent<MeshFilter>().sharedMesh = DoorLeafMesh(alongX, AlongSign(req, alongX));
+                    // 문 이미지의 경첩(왼쪽)을 실제 경첩 쪽에 맞춘다 (양쪽 면 모두). 표지판 글씨는 뒤집히지 않게 따로 둔다.
+                    panel.GetComponent<MeshFilter>().sharedMesh = StairDoorMesh(alongX, -AlongSign(req, alongX));
                     so.FindProperty("hinge").objectReferenceValue = hinge;
                     so.FindProperty("openAngle").floatValue = req.openAngle != 0f ? req.openAngle : 95f;
                 }
@@ -551,6 +552,76 @@ namespace Escape.EditorTools
             }
             mesh.uv = uv;
             doorLeafMeshes[(alongX, hs)] = mesh;
+            return mesh;
+        }
+
+        static readonly Dictionary<(bool, int), Mesh> stairDoorMeshes = new Dictionary<(bool, int), Mesh>();
+
+        /// <summary>
+        /// 계단 비상구 문짝 메시. 큰 두 면을 위쪽 표지판 띠와 문 본체로 나눈다.
+        /// - 문 본체: 이미지의 경첩(왼쪽 가장자리)이 앞면에서든 뒷면에서든 실제 경첩이 있는 쪽에 오게 가로 UV를 맞춘다 (문고리는 그 반대편).
+        /// - 표지판 띠: 보는 사람 기준으로 그대로 둬서 "STAIRS" 글씨가 어느 면에서도 뒤집히지 않는다.
+        /// hingeSign: 경첩이 있는 쪽 (문 진행 축 기준 +1/-1).
+        /// </summary>
+        static Mesh StairDoorMesh(bool alongX, float hingeSign)
+        {
+            int hs = hingeSign >= 0f ? 1 : -1;
+            if (stairDoorMeshes.TryGetValue((alongX, hs), out var cached) && cached != null) return cached;
+
+            const float BandV = 0.875f;   // 표지판은 문짝 위쪽 약 12%
+            Vector3 e = alongX ? Vector3.right : Vector3.forward;      // 문 진행 축
+            Vector3 nrm = alongX ? Vector3.forward : Vector3.right;    // 큰 면의 바깥 방향
+            var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var tris = new List<int>();
+
+            void Quad(Vector3 n, Vector3 r, float y0, float y1, System.Func<Vector3, Vector2> uvOf)
+            {
+                Vector3 c = n * 0.5f;
+                Vector3[] corner =
+                {
+                    c - r * 0.5f + Vector3.up * (y0 - 0.5f - 0f), c - r * 0.5f + Vector3.up * (y1 - 0.5f),
+                    c + r * 0.5f + Vector3.up * (y1 - 0.5f), c + r * 0.5f + Vector3.up * (y0 - 0.5f),
+                };
+                int i = verts.Count;
+                foreach (var q in corner) { verts.Add(q); uvs.Add(uvOf(q)); }
+                tris.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });   // 바깥에서 볼 때 시계 방향
+            }
+
+            foreach (float sgn in new[] { 1f, -1f })
+            {
+                Vector3 n = nrm * sgn;
+                Vector3 r = Vector3.Cross(Vector3.up, -n).normalized;      // 바깥에서 이 면을 볼 때 오른쪽
+                // 문 본체
+                Quad(n, r, 0f, BandV, q =>
+                {
+                    float a = Vector3.Dot(q, e);
+                    return new Vector2(hs > 0 ? 0.5f - a : a + 0.5f, q.y + 0.5f);
+                });
+                // 표지판 띠
+                Quad(n, r, BandV, 1f, q => new Vector2(Vector3.Dot(q, r) + 0.5f, q.y + 0.5f));
+            }
+
+            // 좁은 옆면과 위아래 면은 이미지를 거의 쓰지 않으므로 단순하게 만든다
+            foreach (float sgn in new[] { 1f, -1f })
+            {
+                Vector3 n = e * sgn;
+                Quad(n, Vector3.Cross(Vector3.up, -n).normalized, 0f, 1f, q => new Vector2(0.5f, q.y + 0.5f));
+            }
+            foreach (float sgn in new[] { 1f, -1f })
+            {
+                Vector3 n = Vector3.up * sgn;
+                Vector3 r = e;
+                Vector3 c = n * 0.5f;
+                Vector3 f = Vector3.Cross(r, n).normalized;
+                int i = verts.Count;
+                verts.Add(c - r * 0.5f - f * 0.5f); verts.Add(c - r * 0.5f + f * 0.5f); verts.Add(c + r * 0.5f + f * 0.5f); verts.Add(c + r * 0.5f - f * 0.5f);
+                for (int k = 0; k < 4; k++) uvs.Add(new Vector2(0.5f, 0.5f));
+                if (sgn > 0f) tris.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 }); else tris.AddRange(new[] { i, i + 2, i + 1, i, i + 3, i + 2 });
+            }
+
+            var mesh = new Mesh { name = $"StairDoor_{(alongX ? "x" : "z")}_{(hs > 0 ? "p" : "n")}" };
+            mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals(); mesh.RecalculateBounds();
+            stairDoorMeshes[(alongX, hs)] = mesh;
             return mesh;
         }
 
