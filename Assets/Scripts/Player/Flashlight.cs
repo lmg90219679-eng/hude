@@ -1,3 +1,4 @@
+using Escape.Core;
 using Escape.Audio;
 using Escape.Items;
 using UnityEngine;
@@ -43,7 +44,7 @@ namespace Escape.Player
 
             if (!IsOn) return;
 
-            battery -= Time.deltaTime;
+            battery -= Time.deltaTime * GameSettings.BatteryDrain;
             if (battery <= 0f)
             {
                 battery = 0f;

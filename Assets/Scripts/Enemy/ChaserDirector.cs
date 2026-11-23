@@ -15,7 +15,6 @@ namespace Escape.Enemy
     {
         [SerializeField] float followDelay = 2.5f;
         [SerializeField] float followRange = 18f;
-        [SerializeField] float startGraceSeconds = 30f;
 
         public static ChaserDirector Instance { get; private set; }
         public bool HuntMode { get; private set; }
@@ -30,7 +29,7 @@ namespace Escape.Enemy
             player = FindFirstObjectByType<PlayerController>();
 
             // 판 시작 직후에는 주변을 살필 시간을 준다
-            foreach (var c in chasers) c.GraceUntil = Time.time + startGraceSeconds;
+            foreach (var c in chasers) c.GraceUntil = Time.time + GameSettings.GraceSeconds;
         }
 
         int lastPlayerFloor = -1;

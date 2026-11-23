@@ -20,6 +20,7 @@ namespace Escape.Items
 
         void Start()
         {
+            batteriesPerFloor = GameSettings.BatteriesPerFloor;
             var containers = FindObjectsByType<Container>(FindObjectsSortMode.None);
             var allDoors = FindObjectsByType<Door>(FindObjectsSortMode.None).Where(d => !d.secret && d.roomA != d.roomB).ToArray();
 

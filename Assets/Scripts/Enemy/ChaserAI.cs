@@ -79,6 +79,13 @@ namespace Escape.Enemy
         void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
+
+            // 난이도 배율 (중간은 1배라 값이 그대로다)
+            float speed = GameSettings.ChaserSpeed, sight = GameSettings.SightRange;
+            patrolSpeed *= speed; chaseSpeed *= speed; investigateSpeed *= speed;
+            sightRange *= sight; unlitSightRange *= sight;
+            searchDuration *= GameSettings.SearchSeconds;
+
             if (GetComponent<ChaserDoorOpener>() == null) gameObject.AddComponent<ChaserDoorOpener>();
             if (eye == null) eye = transform;
             if (player != null)
@@ -213,7 +220,7 @@ namespace Escape.Enemy
             if (Current == State.Chase) return;
             if (Time.time < GraceUntil) return;
             if (Mathf.Abs(position.y - transform.position.y) > 2.5f) return;   // 다른 층 소리는 못 듣는다
-            if (Vector3.Distance(transform.position, position) > radius * (HuntMode ? huntSenseFactor : 1f)) return;
+            if (Vector3.Distance(transform.position, position) > radius * GameSettings.Hearing * (HuntMode ? huntSenseFactor : 1f)) return;
 
             lastKnownPosition = position;
             EnterInvestigate(position);
