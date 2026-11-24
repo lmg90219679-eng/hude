@@ -77,6 +77,7 @@
 
 ## 소리, UI, 지도
 - 소리는 `devscripts/make_audio.py`가 순수 파이썬으로 합성해서 `Assets/Resources/Audio/*.wav`에 만든다 (발소리 4종, 심장 소리, 문 미닫이·삐걱임, 서랍, 금속, 레버, 열쇠 줍기, 비명, 충격음, 추적자 으르렁, 엘리베이터 소리, 경보, 정전 복구, 배경 저음 등 22개). `GameAudio.Load(이름)`이 불러오고, 파일이 없으면 `ProceduralSounds`(코드로 만든 소리)로 대신한다. 문·서랍·레버·추적자 으르렁은 `PlayAt`으로 그 자리에서 입체음으로 난다.
+- 층마다 배경음이 다르다 (`devscripts/make_floor_audio.py` → `Amb_F0`~`F4`, 0=지하2 … 4=3층): 3층 불씨·바람(가장 약함), 2층 먼 신음·쇠사슬, 1층 맥박·질척임·숨, 지하1 불협화 고음·째깍·톱질·속삭임, 지하2 물방울·기포·합창 신음·이명·심장(가장 괴이함). `GameAudio.UpdateFloorAudio`가 플레이어 층에 맞춰 크로스페이드하고, 층이 깊을수록 짧은 간격으로 `Ev_Moan/Scrape/Drip/Knock/Slam`을 주변 8~20m 어딘가에서 들려 준다. 소리 프롬프트 목록은 `devscripts/sound_prompts.md`.
 - 아이템 아이콘은 `ItemIcons.cs`가 서랍 안 모델을 찍어 `Assets/Resources/Icons/*.png`(투명 배경)로 만든다 (`Escape > Build Item Icons`, 씬 빌드 때도 만든다).
 - HUD(`HUD.cs`)는 1080p 기준으로 화면 크기에 맞춰 늘린다: 미니맵(플레이어를 따라가고 방 용도별 색, 문 상태, 계단, 바라보는 방향 화살표), 열쇠 조각 5칸, 손전등 배터리 막대, 키 모양 상호작용 안내, 획득 알림 카드, 소지품 창(아이콘 칸, 설명, 조합법, 방 열쇠), 큰 지도(층 탭, ←→로 층 넘기기, 범례).
 

@@ -252,15 +252,29 @@ def heartbeat():
 
 
 def footsteps():
+    """발소리 4종: 뒤꿈치가 먼저 딱 닿고, 조금 뒤 앞꿈치가 철퍼덕 닿는 두 단계. 먼지 낀 콘크리트 느낌."""
     for k in range(1, 5):
-        dur = 0.32
-        n = n_samples(dur)
-        brightness = random.uniform(1100, 2600)
-        heel = mul(bandpass(noise(n), brightness, 1.2), env_exp(n, random.uniform(0.018, 0.03), 0.001))
-        scuff = mul(highpass(noise(n), 3500), env_exp(n, 0.05, 0.015))
-        thud = mul(sine(n, random.uniform(70, 110)), env_exp(n, 0.07, 0.002))
-        body = mix(scale(heel, 2.4), scale(scuff, 0.35), scale(thud, 1.1))
-        body = reverb(body, wet=0.28, size=1.1, tail=0.25)
+        random.seed(5000 + k * 17)
+        n = n_samples(0.42)
+        gap = random.uniform(0.065, 0.1)
+        hb = random.uniform(1300, 2300)
+        heel = mul(bandpass(noise(n), hb, 1.6), env_exp(n, random.uniform(0.012, 0.02), 0.0008))
+        heel_thud = mul(sine(n, random.uniform(85, 120)), env_exp(n, 0.05, 0.002))
+        heel_part = mix(scale(heel, 2.6), scale(heel_thud, 1.2))
+        toe_len = n_samples(0.2)
+        toe = mul(bandpass(noise(toe_len), random.uniform(600, 1100), 0.9), env_exp(toe_len, 0.035, 0.002))
+        toe_thud = mul(sine(toe_len, random.uniform(60, 85)), env_exp(toe_len, 0.07, 0.003))
+        toe_part = delayed(mix(scale(toe, 1.7), scale(toe_thud, 0.9)), gap, n)
+        grit = mul(highpass(noise(n), 4200), env_exp(n, 0.09, 0.01))
+        grit_bits = [0.0] * n
+        for _ in range(random.randint(3, 7)):
+            s = int(random.uniform(0.01, 0.25) * SR)
+            m = n_samples(0.004)
+            for j in range(m):
+                if s + j < n:
+                    grit_bits[s + j] += random.uniform(-1, 1) * (1 - j / m) * 0.5
+        body = mix(heel_part, toe_part, scale(grit, 0.3), scale(grit_bits, 0.5))
+        body = reverb(body, wet=0.3, size=1.2, tail=0.3)
         save(f"Footstep{k}", fade_edges(body), 0.85)
 
 
@@ -284,17 +298,24 @@ def door_slide():
 
 
 def door_creak():
-    n = n_samples(1.6)
-    ph = 0.0
-    saw = []
-    for i in range(n):
-        f = 140 + 90 * math.sin(TAU * 0.9 * i / SR) + 160 * (i / n)
-        ph += TAU * f / SR
-        saw.append(((ph / TAU) % 1.0) * 2.0 - 1.0)
-    f1 = bandpass(saw, 700, 6.0)
-    f2 = bandpass(saw, 1500, 8.0)
-    env = [math.sin(math.pi * i / n) ** 0.5 for i in range(n)]
-    y = mul(mix(scale(f1, 3.0), scale(f2, 2.0)), env)
+    """삐걱임: 마찰이 붙었다 미끄러지길 반복하는 불규칙한 펄스 열을 울림통(공진)에 통과시킨다."""
+    random.seed(777)
+    dur = 2.0
+    n = n_samples(dur)
+    imp = [0.0] * n
+    pos = 0
+    while pos < n:
+        t = pos / SR
+        f = 95 + 170 * math.sin(math.pi * t / dur) ** 1.2 + 25 * math.sin(TAU * 1.7 * t)
+        imp[pos] = random.uniform(0.5, 1.0)
+        pos += max(8, int(SR / f * random.uniform(0.75, 1.3)))
+    r1 = bandpass(imp, 650, 5.0)
+    r2 = bandpass(imp, 1450, 7.0)
+    r3 = bandpass(imp, 2350, 9.0)
+    stick = [abs(v) for v in lowpass(noise(n), 5)]
+    sm = max(stick) or 1.0
+    env = [(math.sin(math.pi * i / n) ** 0.6) * (0.35 + 0.65 * stick[i] / sm) for i in range(n)]
+    y = mul(mix(scale(r1, 4.0), scale(r2, 3.0), scale(r3, 1.6)), env)
     y = reverb(y, wet=0.3, size=1.3, tail=0.5)
     save("DoorCreak", fade_edges(y), 0.75)
 
@@ -398,33 +419,43 @@ def alarm():
 
 
 def scream():
-    sec = 2.4
+    """비명: 성대 떨림 + 중간에 음이 한 옥타브 가까이 꺾이는 소리, 거친 쉰 소리(rasp)와 숨소리를 섞는다."""
+    sec = 2.6
     n = n_samples(sec)
     random.seed(99)
+    jit = lowpass(noise(n), 45)
     voices = []
-    for detune in (1.0, 1.012, 0.5):
+    for detune in (1.0, 1.015, 0.5):
         ph = 0.0
         v = [0.0] * n
         for i in range(n):
             t = i / SR
-            glide = 480 + 520 * min(1.0, t / 0.35) - 120 * max(0.0, (t - 1.4) / 1.0)
-            vib = 1.0 + 0.035 * math.sin(TAU * 6.3 * t) + 0.015 * math.sin(TAU * 11.0 * t)
-            f0 = glide * vib * detune
+            glide = 520 + 480 * min(1.0, t / 0.3) - 150 * max(0.0, (t - 1.7) / 0.9)
+            brk = 0.0
+            if 0.85 < t < 0.95:
+                brk = (t - 0.85) / 0.1
+            elif 0.95 <= t < 1.5:
+                brk = 1.0 - (t - 0.95) / 0.55 * 0.3
+            elif t >= 1.5:
+                brk = 0.7 * max(0.0, 1.0 - (t - 1.5) / 0.3)
+            vib = 1.0 + 0.03 * math.sin(TAU * 6.3 * t) + 0.012 * math.sin(TAU * 11.0 * t) + 0.05 * jit[i]
+            f0 = glide * (1.0 + 0.45 * brk) * vib * detune
             ph += TAU * f0 / SR
             s = 0.0
             k = 1
-            while k * f0 < 9000 and k < 30:
+            while k * f0 < 9500 and k < 32:
                 fk = k * f0
-                w = math.exp(-((fk - 950) / 380) ** 2) + 0.8 * math.exp(-((fk - 2350) / 600) ** 2) + 0.35 * math.exp(-((fk - 3600) / 800) ** 2)
-                s += math.sin(k * ph) * w / (k ** 0.35)
+                w = math.exp(-((fk - 1000) / 420) ** 2) + 0.9 * math.exp(-((fk - 2500) / 650) ** 2) + 0.5 * math.exp(-((fk - 3700) / 850) ** 2)
+                s += math.sin(k * ph) * w / (k ** 0.3)
                 k += 1
-            attack = min(1.0, t / 0.03)
-            release = min(1.0, max(0.0, (sec - t) / 0.7))
-            v[i] = s * attack * release * (0.7 + 0.3 * math.sin(TAU * 9.0 * t))
+            attack = min(1.0, t / 0.025)
+            release = min(1.0, max(0.0, (sec - t) / 0.8))
+            rasp = 0.72 + 0.28 * (1.0 if math.sin(TAU * 78.0 * t) > 0 else -0.3)
+            v[i] = s * attack * release * rasp * (0.75 + 0.25 * math.sin(TAU * 9.0 * t))
         voices.append(v)
-    breath = mul(bandpass(noise(n), 3000, 0.7), [min(1.0, i / (0.05 * SR)) * min(1.0, (n - i) / (0.6 * SR)) for i in range(n)])
-    y = mix(voices[0], scale(voices[1], 0.7), scale(voices[2], 0.5), scale(breath, 0.9))
-    y = distort(y, 3.0)
+    breath = mul(bandpass(noise(n), 3200, 0.7), [min(1.0, i / (0.04 * SR)) * min(1.0, (n - i) / (0.7 * SR)) for i in range(n)])
+    y = mix(voices[0], scale(voices[1], 0.7), scale(voices[2], 0.5), scale(breath, 1.1))
+    y = distort(y, 3.5)
     y = reverb(y, wet=0.22, size=1.2, tail=0.5)
     save("Scream", fade_edges(y), 0.98)
 
@@ -477,23 +508,40 @@ def power_up():
 
 
 def growl():
-    sec = 3.2
+    """으르렁: 불규칙한 성대 떨림 + 27Hz 덜덜거림(rattle) + 모음이 오-아로 열렸다 닫히는 소리 + 젖은 목구멍 딸깍임 + 숨."""
+    random.seed(4242)
+    sec = 3.4
     n = n_samples(sec)
+    jit = lowpass(noise(n), 25)
     ph = 0.0
-    y = []
+    src = []
     for i in range(n):
         t = i / SR
-        f = 58 + 22 * math.sin(TAU * 0.7 * t) + 14 * math.sin(TAU * 23 * t)
+        f = (66 + 18 * math.sin(TAU * 0.55 * t) + 10 * math.sin(TAU * 1.9 * t)) * (1.0 + 0.3 * jit[i])
         ph += TAU * f / SR
-        s = ((ph / TAU) % 1.0) * 2.0 - 1.0
-        y.append(s)
-    rough = bandpass(y, 260, 2.0)
-    rough2 = bandpass(y, 740, 3.0)
-    hiss = mul(bandpass(noise(n), 2200, 1.0), [0.4 + 0.6 * abs(math.sin(TAU * 4.3 * i / SR)) for i in range(n)])
-    env = [min(1.0, i / (0.25 * SR)) * min(1.0, (n - i) / (0.9 * SR)) for i in range(n)]
-    out = mul(mix(scale(rough, 2.2), scale(rough2, 1.4), scale(hiss, 0.25)), env)
-    out = distort(out, 2.5)
-    out = highpass(out, 30)   # 톱니파 왜곡에서 생기는 직류 성분 제거
+        saw = ((ph / TAU) % 1.0) * 2.0 - 1.0
+        rattle = 0.45 + 0.55 * max(0.0, math.sin(TAU * 27.0 * t)) ** 0.6
+        src.append(saw * rattle)
+    oo = mix(scale(bandpass(src, 320, 2.5), 2.0), scale(bandpass(src, 800, 3.0), 1.2))
+    aa = mix(scale(bandpass(src, 720, 2.5), 2.0), scale(bandpass(src, 1250, 3.0), 1.4), scale(bandpass(src, 2600, 4.0), 0.5))
+    mixd = []
+    for i in range(n):
+        t = i / SR
+        a = 0.5 + 0.5 * math.sin(TAU * 0.4 * t - 1.0)
+        mixd.append(oo[i] * (1 - a) + aa[i] * a)
+    clicks = [0.0] * n
+    for _ in range(26):
+        s = int(random.uniform(0.2, 3.0) * SR)
+        m = n_samples(0.012)
+        for j in range(m):
+            if s + j < n:
+                clicks[s + j] += random.uniform(-1, 1) * math.exp(-j / (0.003 * SR)) * 0.8
+    clicks = lowpass(clicks, 1800)
+    breath = mul(bandpass(noise(n), 1900, 0.9), [0.3 + 0.7 * abs(math.sin(TAU * 0.7 * i / SR)) for i in range(n)])
+    env = [min(1.0, i / (0.3 * SR)) * min(1.0, (n - i) / (1.0 * SR)) for i in range(n)]
+    out = mul(mix(scale(mixd, 1.8), scale(clicks, 1.6), scale(breath, 0.3)), env)
+    out = distort(out, 2.2)
+    out = highpass(out, 30)
     out = reverb(out, wet=0.3, size=1.5, tail=0.4)
     save("Growl", fade_edges(out), 0.9)
 

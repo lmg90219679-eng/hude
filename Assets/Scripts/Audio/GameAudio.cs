@@ -43,8 +43,65 @@ namespace Escape.Audio
             sting = Load("Sting") ?? ProceduralSounds.Sting();
             growl = Load("Growl");
 
+            // 층마다 다른 배경음: 위층일수록 순하고 지하2층이 가장 괴이하다 (파일이 없으면 공용 배경음)
+            floorBeds = new AudioSource[TowerLayout.Floors];
+            bool anyBed = false;
+            for (int f = 0; f < floorBeds.Length; f++)
+            {
+                var clip = Load("Amb_F" + f);
+                if (clip == null) continue;
+                floorBeds[f] = NewSource("Ambient_F" + f, clip, loop: true, volume: 0f);
+                floorBeds[f].Play();
+                anyBed = true;
+            }
+            if (anyBed) ambient.volume = 0.12f;
             ambient.Play();
             heart.Play();
+            nextEvent = Time.time + 12f;
+        }
+
+        // ---------- 층별 배경음과 불시에 들리는 소리 ----------
+
+        AudioSource[] floorBeds;
+        float nextEvent;
+        int lastFloor = -1;
+
+        // 층 번호 0=지하2 ... 4=3층. 배경음 크기, 불시 소리 간격(초), 크기, 종류
+        static readonly float[] BedVolume = { 0.85f, 0.7f, 0.6f, 0.5f, 0.4f };
+        static readonly float[] EventMin = { 7f, 12f, 20f, 30f, 45f };
+        static readonly float[] EventMax = { 15f, 25f, 40f, 55f, 80f };
+        static readonly float[] EventVolume = { 1f, 0.85f, 0.7f, 0.55f, 0.4f };
+        static readonly string[][] EventClips =
+        {
+            new[] { "Ev_Moan", "Ev_Drip", "Ev_Scrape", "Ev_Knock", "Ev_Slam", "Whisper" },
+            new[] { "Ev_Scrape", "Ev_Knock", "Ev_Moan", "Ev_Drip" },
+            new[] { "Ev_Moan", "Ev_Drip", "Ev_Scrape", "Ev_Slam" },
+            new[] { "Ev_Moan", "Ev_Scrape", "Ev_Knock" },
+            new[] { "Ev_Slam", "Ev_Knock" },
+        };
+
+        void UpdateFloorAudio()
+        {
+            int floor = Mathf.Clamp(TowerLayout.FloorOf(player.transform.position.y), 0, TowerLayout.Floors - 1);
+            for (int f = 0; f < floorBeds.Length; f++)
+            {
+                if (floorBeds[f] == null) continue;
+                float target = f == floor ? BedVolume[f] : 0f;
+                floorBeds[f].volume = Mathf.MoveTowards(floorBeds[f].volume, target, Time.deltaTime * 0.35f);
+            }
+            if (floor != lastFloor)
+            {
+                lastFloor = floor;
+                nextEvent = Mathf.Max(nextEvent, Time.time + 6f);   // 층을 옮긴 직후엔 잠시 조용하다
+            }
+            if (Time.time < nextEvent) return;
+            nextEvent = Time.time + Random.Range(EventMin[floor], EventMax[floor]);
+
+            var names = EventClips[floor];
+            string pick = names[Random.Range(0, names.Length)];
+            // 플레이어 주변 8~20m 어딘가에서 들린다 (방향은 무작위)
+            var dir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
+            PlayAt(pick, player.transform.position + dir * Random.Range(8f, 20f), EventVolume[floor], 40f);
         }
 
         void OnEnable() => PlayerController.Stepped += OnStep;
@@ -104,6 +161,7 @@ namespace Escape.Audio
         void Update()
         {
             if (player == null) return;
+            UpdateFloorAudio();
 
             // 추적자가 여러 명(층마다 1명)이라 가끔 목록을 갱신한다
             if (Time.time >= nextScan)
@@ -242,6 +300,8 @@ namespace Escape.Audio
         public void PlayScream()
         {
             ambient.Stop();
+            if (floorBeds != null) foreach (var b in floorBeds) if (b != null) b.Stop();
+            nextEvent = float.MaxValue;
             heart.volume = 0f;
             AudioListener.volume = 1f;
             sfx.PlayOneShot(sting, 1f);
