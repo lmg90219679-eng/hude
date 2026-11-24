@@ -51,3 +51,9 @@ crashlytics-build.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Local junk
+build_log*
+BeeFullBackup_*/
+desktop.ini
+*.slnx
