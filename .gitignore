@@ -57,3 +57,6 @@ build_log*
 BeeFullBackup_*/
 desktop.ini
 *.slnx
+
+/Assets/_Recovery/
+/Assets/_Recovery.meta
