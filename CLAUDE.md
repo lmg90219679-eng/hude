@@ -98,4 +98,4 @@
 - 씬은 `Escape > Build Tower Scene` 메뉴(또는 `unity run -- -executeMethod Escape.EditorTools.Week1SceneBuilder.BuildFromCommandLine`)로 자동 생성한다. 구조 변경은 `TowerBuilder.cs`에서 한다.
 - 커밋은 작은 단위로, git은 PowerShell에서 직접 실행한다 (gh CLI 사용 안 함)
 - Unity 제어는 `unity` CLI(`unity command ...`)를 쓴다. 3D 에셋 생성은 varco-3d MCP를 사용한다
-- Windows 빌드는 명령줄/에디터 모두 스크립트 컴파일 단계에서 멈추는 문제가 있다 (원인 미확인)
+- Windows 빌드는 명령줄/에디터 모두 멈춘다. 컴파일(ILPP)은 끝나고, Bee가 `cmd.exe /c netcorerun.exe BuildPlayerDataGenerator.exe -a=...`(역슬래시 경로 인자 11개 이상)를 실행하는 단계에서 `cmd.exe`가 아무것도 실행하지 않고 멈춘다. 생성기를 `cmd.exe` 없이 직접 실행하면 1초 만에 끝난다. 이 PC의 서드파티 보안 프로그램(Reason Cybersecurity)이 원인으로 의심된다(미확인): Unity 폴더와 프로젝트 폴더를 제외하거나 잠시 끄고 `AgentScripts/DoBuild.cs`(`DoBuild.Run`)로 다시 시도한다. 안 되면 다른 PC에서 빌드한다. `Library/Bee` 초기화는 효과 없었다.
