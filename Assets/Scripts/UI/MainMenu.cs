@@ -82,8 +82,9 @@ namespace Escape.UI
         void OnGUI()
         {
             EnsureStyles();
-            float k = Screen.height / 1080f;
-            float W = Screen.width / k, H = 1080f;
+            // 1080p 기준. 16:9보다 좁은 화면(16:10, 4:3)에서는 글자가 겹치지 않도록 가로 1700 이상을 확보하게 줄여서 그린다.
+            float k = Mathf.Min(Screen.height / 1080f, Screen.width / 1700f);
+            float W = Screen.width / k, H = Screen.height / k;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
 
             Fill(new Rect(0, 0, W, H), Ink);
@@ -148,11 +149,12 @@ namespace Escape.UI
             float y = r.y + 78f;
             foreach (var (key, what) in rows)
             {
+                float dh = body.CalcHeight(new GUIContent(what), r.width - 240);   // 설명이 길어 줄이 바뀌면 다음 줄을 그만큼 내린다
                 var kr = new Rect(r.x, y, 210, 46);
                 Fill(kr, new Color(0.14f, 0.14f, 0.16f)); Frame(kr, Line);
                 GUI.Label(kr, key, keyCap);
-                GUI.Label(new Rect(r.x + 240, y + 6, r.width - 240, 44), what, body);
-                y += 62f;
+                GUI.Label(new Rect(r.x + 240, y + 6, r.width - 240, dh + 4), what, body);
+                y += Mathf.Max(62f, dh + 22f);
             }
             GUI.Label(new Rect(r.x, y + 8, r.width, 60), "클리어 또는 잡힌 뒤에는 R 다시 시작, M 메인 메뉴", small);
         }
@@ -185,14 +187,14 @@ namespace Escape.UI
 
             // 화면
             float y = r.y + 80f;
-            GUI.Label(new Rect(r.x, y, 220, 40), "화면", new GUIStyle(body) { fontStyle = FontStyle.Bold });
+            GUI.Label(new Rect(r.x, y, 190, 40), "화면", new GUIStyle(body) { fontStyle = FontStyle.Bold });
             bool full = GameSettings.Fullscreen;
             if (Choice(new Rect(r.x + 200, y - 6, 220, 52), "전체 화면", full)) GameSettings.Fullscreen = true;
             if (Choice(new Rect(r.x + 432, y - 6, 220, 52), "창 모드", !full)) GameSettings.Fullscreen = false;
             if (!full)
             {
                 y += 70f;
-                GUI.Label(new Rect(r.x, y, 220, 40), "창 크기", body);
+                GUI.Label(new Rect(r.x, y, 190, 40), "창 크기", body);
                 float x = r.x + 200;
                 foreach (int w in GameSettings.WindowWidths)
                 {
@@ -203,7 +205,7 @@ namespace Escape.UI
 
             // 난이도
             y += 110f;
-            GUI.Label(new Rect(r.x, y, 220, 40), "난이도", new GUIStyle(body) { fontStyle = FontStyle.Bold });
+            GUI.Label(new Rect(r.x, y, 190, 40), "난이도", new GUIStyle(body) { fontStyle = FontStyle.Bold });
             var cur = GameSettings.Difficulty;
             float dx = r.x + 200;
             foreach (Difficulty d in new[] { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard })
@@ -216,8 +218,9 @@ namespace Escape.UI
                 cur == Difficulty.Easy ? "추적자가 10% 느리고 시야와 청각이 짧다. 시작 후 45초 동안 움직이지 않고, 손전등이 천천히 닳으며 층마다 배터리가 3개 있다."
                 : cur == Difficulty.Hard ? "추적자가 10% 빠르고 더 멀리서 보고 듣는다. 시작 후 20초만 기다려 주고, 손전등이 25% 빨리 닳는다."
                 : "기본 설정. 추적자 속도와 시야는 기준값이고, 시작 후 30초 동안 움직이지 않는다.";
-            GUI.Label(new Rect(r.x, y + 68f, r.width, 130), detail, body);
-            GUI.Label(new Rect(r.x, y + 150f, r.width, 60), "난이도는 다음 게임을 시작할 때부터 적용된다.", small);
+            float dh = body.CalcHeight(new GUIContent(detail), r.width);
+            GUI.Label(new Rect(r.x, y + 68f, r.width, dh + 4), detail, body);
+            GUI.Label(new Rect(r.x, y + 68f + dh + 24f, r.width, 60), "난이도는 다음 게임을 시작할 때부터 적용된다.", small);
         }
     }
 }
