@@ -221,14 +221,6 @@ namespace Escape.UI
             float dh = body.CalcHeight(new GUIContent(detail), r.width);
             GUI.Label(new Rect(r.x, y + 68f, r.width, dh + 4), detail, body);
             GUI.Label(new Rect(r.x, y + 68f + dh + 24f, r.width, 60), "난이도는 다음 게임을 시작할 때부터 적용된다.", small);
-
-            // 박스 화면 (그래픽 없이 상자로만 보이는 시제품 모드)
-            float gy = y + 68f + dh + 90f;
-            GUI.Label(new Rect(r.x, gy, 190, 40), "그래픽", new GUIStyle(body) { fontStyle = FontStyle.Bold });
-            bool grey = GameSettings.Greybox;
-            if (Choice(new Rect(r.x + 200, gy - 6, 220, 52), "일반", !grey)) GameSettings.Greybox = false;
-            if (Choice(new Rect(r.x + 432, gy - 6, 220, 52), "박스 화면", grey)) GameSettings.Greybox = true;
-            GUI.Label(new Rect(r.x, gy + 56f, r.width, 40), "박스 화면: 질감과 모델 없이 단색 상자로만 보인다. 다음 게임부터 적용.", small);
         }
     }
 }
