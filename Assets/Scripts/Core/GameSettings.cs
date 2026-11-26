@@ -34,6 +34,13 @@ namespace Escape.Core
             set { PlayerPrefs.SetInt(KeyWindowWidth, value); PlayerPrefs.Save(); ApplyScreen(); }
         }
 
+        /// <summary>그래픽 없이 박스로만 보이는 시제품 화면 (발표용). 다음 게임부터 적용.</summary>
+        public static bool Greybox
+        {
+            get => PlayerPrefs.GetInt("Escape.Greybox", 0) == 1;
+            set { PlayerPrefs.SetInt("Escape.Greybox", value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
         public static string Label(Difficulty d) => d == Difficulty.Easy ? "쉬움" : d == Difficulty.Hard ? "어려움" : "중간";
 
         static float Pick(float easy, float normal, float hard)
